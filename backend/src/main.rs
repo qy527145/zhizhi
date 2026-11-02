@@ -56,7 +56,7 @@ async fn main() {
     let state = AppState { db, jwt: Arc::new(auth::JwtKeys::new(secret.as_bytes())) };
 
     // 生产环境下由后端直接托管前端构建产物，未匹配的路径回落到 index.html 交给前端路由。
-    let spa = ServeDir::new(&static_dir).not_found_service(ServeFile::new(format!("{static_dir}/index.html")));
+    let spa = ServeDir::new(&static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
     let app = Router::new()
         .nest("/api", routes::router())

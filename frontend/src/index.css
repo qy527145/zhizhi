@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --color-accent: #3f63f0;
+  --color-accent-soft: #eef1fe;
+  --shadow-pop: 0 0 0 1px rgb(0 0 0 / 0.06), 0 8px 24px -6px rgb(0 0 0 / 0.16);
+  --animate-in: pop-in 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-white text-zinc-900 antialiased text-[13px] leading-normal;
+  font-feature-settings: "cv11", "ss01";
+}
+::selection { @apply bg-accent/15; }
+* { scrollbar-width: thin; scrollbar-color: rgb(0 0 0 / 0.12) transparent; }
+:focus-visible { @apply outline-none; }
+/* 输入类控件由各自样式表达焦点，按钮等可交互元素用柔和的焦点环 */
+:where(button, a, [tabindex]):focus-visible { @apply ring-2 ring-accent/40; }
