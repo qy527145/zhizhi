@@ -1,5 +1,7 @@
 import { Kbd, Modal } from "@zhizhi/ui/ui";
 import {
+  CalendarDays,
+  ChartGantt,
   CircleDot,
   Columns3,
   FolderKanban,
@@ -10,11 +12,13 @@ import {
   PanelLeft,
   Plus,
   Settings,
+  Table2,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "@/stores/auth";
 import { useIssues } from "@/stores/issues";
-import { type PickerKind, useUi } from "@/stores/ui";
+import { type PickerKind, useUi, type ViewMode } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import { type CommandItem, CommandList } from "./CommandList";
 import { StateIcon } from "./icons";
@@ -25,6 +29,19 @@ const ISSUE_ACTIONS: { kind: PickerKind; label: string; key: string }[] = [
   { kind: "assignee", label: "指派负责人", key: "A" },
   { kind: "labels", label: "设置标签", key: "L" },
   { kind: "due", label: "设置截止日期", key: "D" },
+];
+
+const VIEWS: { mode: ViewMode; label: string; keywords: string; icon: ReactNode }[] = [
+  { mode: "list", label: "列表", keywords: "list liebiao", icon: <List size={14} /> },
+  { mode: "board", label: "看板", keywords: "board kanban", icon: <Columns3 size={14} /> },
+  { mode: "table", label: "表格", keywords: "table biaoge", icon: <Table2 size={14} /> },
+  { mode: "calendar", label: "日历", keywords: "calendar rili", icon: <CalendarDays size={14} /> },
+  {
+    mode: "timeline",
+    label: "时间线",
+    keywords: "timeline gantt shijianxian",
+    icon: <ChartGantt size={14} />,
+  },
 ];
 
 export function CommandPalette() {
@@ -68,22 +85,14 @@ export function CommandPalette() {
         hint: <Kbd>C</Kbd>,
         onSelect: run(() => ui.set({ createOpen: true })),
       },
-      {
-        id: "view-list",
+      ...VIEWS.map((v) => ({
+        id: `view-${v.mode}`,
         group: "操作",
-        label: "切换为列表视图",
-        keywords: "list liebiao",
-        icon: <List size={14} />,
-        onSelect: run(() => ui.set({ viewMode: "list" })),
-      },
-      {
-        id: "view-board",
-        group: "操作",
-        label: "切换为看板视图",
-        keywords: "board kanban",
-        icon: <Columns3 size={14} />,
-        onSelect: run(() => ui.set({ viewMode: "board" })),
-      },
+        label: `切换为${v.label}视图`,
+        keywords: v.keywords,
+        icon: v.icon,
+        onSelect: run(() => ui.set({ viewMode: v.mode })),
+      })),
       {
         id: "sidebar",
         group: "操作",

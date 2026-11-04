@@ -46,7 +46,7 @@ export function CreateIssueModal() {
   const open = useUi((s) => s.createOpen);
   const set = useUi((s) => s.set);
   const [wide, setWide] = useState(false);
-  const close = () => set({ createOpen: false, createStateId: null });
+  const close = () => set({ createOpen: false, createStateId: null, createDue: null });
   // 每次打开都重新挂载表单，状态自然重置（草稿从 sessionStorage 恢复）。
   return (
     <Modal
@@ -70,6 +70,7 @@ function CreateIssueForm({
   onToggleWide: () => void;
 }) {
   const presetState = useUi((s) => s.createStateId);
+  const presetDue = useUi((s) => s.createDue);
   const projects = useWorkspace((s) => s.projects);
   const members = useWorkspace((s) => s.members);
   const { projectId: routeProject, slug } = useParams();
@@ -92,7 +93,7 @@ function CreateIssueForm({
   const [stateId, setStateId] = useState<string | undefined>(presetState ?? undefined);
   const [priority, setPriority] = useState<Priority>("none");
   const [assignee, setAssignee] = useState<string | null>(null);
-  const [due, setDue] = useState<string | null>(null);
+  const [due, setDue] = useState<string | null>(presetDue);
   const [start, setStart] = useState<string | null>(null);
   const [labelIds, setLabelIds] = useState<string[]>([]);
   const [more, setMore] = useState(false);

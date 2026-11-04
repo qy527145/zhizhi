@@ -78,6 +78,18 @@ async fn attach_files(db: &sqlx::SqlitePool, issues: &mut [Issue]) -> AppResult<
     for i in issues.iter_mut() {
         i.attachments = map.remove(&i.id).unwrap_or_default();
     }
+
+    let sql = format!(
+        "SELECT issue_id, COUNT(*) FROM comments WHERE issue_id IN ({placeholders}) GROUP BY issue_id"
+    );
+    let mut q = sqlx::query_as::<_, (String, i64)>(&sql);
+    for i in issues.iter() {
+        q = q.bind(&i.id);
+    }
+    let counts: HashMap<String, i64> = q.fetch_all(db).await?.into_iter().collect();
+    for i in issues.iter_mut() {
+        i.comment_count = counts.get(&i.id).copied().unwrap_or(0);
+    }
     Ok(())
 }
 

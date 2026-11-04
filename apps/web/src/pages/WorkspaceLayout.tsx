@@ -7,7 +7,7 @@ import { PropertyPicker } from "@/components/PropertyPicker";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { Sidebar } from "@/components/Sidebar";
 import { useHotkeys } from "@/hooks/useHotkeys";
-import { useUi } from "@/stores/ui";
+import { useUi, VIEW_ORDER } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 
 export function WorkspaceLayout() {
@@ -36,8 +36,11 @@ export function WorkspaceLayout() {
     "/": () => !anyOverlay() && set({ paletteOpen: true }),
     "?": () => !anyOverlay() && set({ helpOpen: true }),
     "[": () => set({ sidebarCollapsed: !useUi.getState().sidebarCollapsed }),
-    v: () =>
-      !anyOverlay() && set({ viewMode: useUi.getState().viewMode === "list" ? "board" : "list" }),
+    v: () => {
+      if (anyOverlay()) return;
+      const cur = VIEW_ORDER.indexOf(useUi.getState().viewMode);
+      set({ viewMode: VIEW_ORDER[(cur + 1) % VIEW_ORDER.length] });
+    },
     "g i": () => navigate(`/${slug}`),
     "g s": () => navigate(`/${slug}/settings`),
     "g p": () => projects[0] && navigate(`/${slug}/projects/${projects[0].id}`),

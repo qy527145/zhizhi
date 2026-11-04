@@ -13,6 +13,8 @@ interface UiState {
   createOpen: boolean;
   /** 新建任务时预设的状态（从分组的 + 按钮进入） */
   createStateId: string | null;
+  /** 新建任务时预设的截止日期（从日历格子进入） */
+  createDue: string | null;
   helpOpen: boolean;
   /** 当前在侧边详情面板中打开的任务 */
   peekId: string | null;
@@ -32,6 +34,7 @@ export const useUi = create<UiState>()(
       paletteOpen: false,
       createOpen: false,
       createStateId: null,
+      createDue: null,
       helpOpen: false,
       peekId: null,
       focusedId: null,

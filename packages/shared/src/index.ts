@@ -95,6 +95,7 @@ export interface Issue {
   updated_at: string;
   label_ids: string[];
   attachments: Attachment[];
+  comment_count: number;
 }
 
 /** 附件元数据，对应 `apps/server/src/models.rs` 的 `Attachment`。正文用 `![说明](ATT-xxx)` 引用。 */
@@ -126,7 +127,24 @@ export interface CreatedToken {
 
 export type ViewKind = "list" | "board" | "table" | "calendar" | "timeline";
 export type GroupBy = "state" | "priority" | "assignee" | "label" | "none";
-export type SortBy = "manual" | "priority" | "due_date" | "updated_at" | "created_at";
+export type SortBy =
+  | "manual"
+  | "priority"
+  | "due_date"
+  | "start_date"
+  | "updated_at"
+  | "created_at"
+  | "title";
+export type TableColumn =
+  | "state"
+  | "priority"
+  | "assignee"
+  | "labels"
+  | "start_date"
+  | "due_date"
+  | "updated_at";
+/** 可以「排除所选」的筛选维度。 */
+export type FilterDimension = "states" | "priorities" | "assignees" | "labels";
 
 /** 任务筛选条件；数组为空表示不限制。 */
 export interface IssueFilter {
@@ -135,6 +153,8 @@ export interface IssueFilter {
   /** 成员 id，`"none"` 表示未指派。 */
   assignees: string[];
   labels: string[];
+  /** 这些维度的语义从「属于所选」变成「不属于所选」。 */
+  negate: FilterDimension[];
   text: string;
   due: "any" | "overdue" | "week" | "none";
   hideClosed: boolean;
@@ -145,6 +165,9 @@ export interface ViewConfig {
   kind: ViewKind;
   groupBy: GroupBy;
   sortBy: SortBy;
+  sortDesc: boolean;
+  /** 表格视图显示的列。 */
+  columns: TableColumn[];
   filter: IssueFilter;
 }
 

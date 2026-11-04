@@ -1,26 +1,59 @@
-import type { Issue, IssueState, Priority } from "@zhizhi/shared";
-import { cn } from "@zhizhi/ui/lib/utils";
-import { Button, Empty, Kbd } from "@zhizhi/ui/ui";
-import { Columns3, List, Plus, SlidersHorizontal, X } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import type { GroupBy, Issue, IssueState, ViewConfig, ViewKind } from "@zhizhi/shared";
+import { Button, Empty, Kbd, Segmented } from "@zhizhi/ui/ui";
+import {
+  Bookmark,
+  CalendarDays,
+  ChartGantt,
+  Columns3,
+  List,
+  Plus,
+  Save,
+  SearchX,
+  SlidersHorizontal,
+  Table2,
+} from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useIssueHotkeys } from "@/hooks/useIssueHotkeys";
-import { PRIORITIES } from "@/lib/constants";
+import { PRIORITIES, STATE_GROUP_LABEL } from "@/lib/constants";
+import {
+  DEFAULT_CONFIG,
+  decodeConfig,
+  encodeConfig,
+  filterCount,
+  filterIssues,
+  groupIssues,
+  normalizeConfig,
+  sortIssues,
+  today,
+} from "@/lib/issueView";
 import { useAuth } from "@/stores/auth";
 import { useIssues } from "@/stores/issues";
+import { toast } from "@/stores/toast";
 import { useUi } from "@/stores/ui";
+import { useViews } from "@/stores/views";
 import { useWorkspace } from "@/stores/workspace";
+import { DisplayMenu, FilterBar, SaveViewPopover } from "./FilterBar";
 import { IssueBoard } from "./IssueBoard";
+import { IssueCalendar } from "./IssueCalendar";
 import { IssueDetail } from "./IssueDetail";
-import { type IssueGroup, IssueList } from "./IssueList";
-import { PriorityIcon } from "./icons";
+import { IssueList } from "./IssueList";
+import { IssueTable } from "./IssueTable";
+import { IssueTimeline } from "./IssueTimeline";
+import { Avatar, LabelDot, PriorityIcon, StateIcon } from "./icons";
 
-type Filter = { priority: Priority[]; mine: boolean; hideClosed: boolean; text: string };
-const EMPTY_FILTER: Filter = { priority: [], mine: false, hideClosed: false, text: "" };
-const PRIORITY_RANK: Record<Priority, number> = { urgent: 0, high: 1, medium: 2, low: 3, none: 4 };
+const VIEW_OPTIONS: { value: ViewKind; icon: ReactNode; label: string }[] = [
+  { value: "list", icon: <List size={14} />, label: "列表" },
+  { value: "board", icon: <Columns3 size={14} />, label: "看板" },
+  { value: "table", icon: <Table2 size={14} />, label: "表格" },
+  { value: "calendar", icon: <CalendarDays size={14} />, label: "日历" },
+  { value: "timeline", icon: <ChartGantt size={14} />, label: "时间线" },
+];
 
 /**
- * 任务视图容器：负责筛选、按状态分组、列表/看板切换、j/k 键盘导航与侧边详情面板。
+ * 任务视图容器：筛选、排序、分组、五种视图切换、j/k 导航与侧边详情。
+ * 配置以 URL 为准，链接可分享；保存的视图是基准，URL 里只放和基准不同的部分。
  * states 传入时按项目状态分组；否则（跨项目视图）按状态分组类型汇总。
  */
 export function IssuesView({
@@ -28,81 +61,130 @@ export function IssuesView({
   icon,
   issues,
   states,
+  projectId,
   emptyText,
 }: {
   title: ReactNode;
   icon: ReactNode;
   issues: Issue[];
   states?: IssueState[];
+  /** 传入时支持保存视图。 */
+  projectId?: string;
   emptyText: string;
 }) {
   const ui = useUi();
   const projects = useWorkspace((s) => s.projects);
+  const members = useWorkspace((s) => s.members);
   const meta = useIssues((s) => s.meta);
   const me = useAuth((s) => s.user?.id);
-  const [filter, setFilter] = useState<Filter>(EMPTY_FILTER);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
 
-  const filtered = useMemo(() => {
-    const q = filter.text.trim().toLowerCase();
-    return issues.filter((i) => {
-      if (filter.priority.length && !filter.priority.includes(i.priority)) return false;
-      if (filter.mine && i.assignee_id !== me) return false;
-      if (filter.hideClosed) {
-        const g = meta[i.project_id]?.states.find((s) => s.id === i.state_id)?.group;
-        if (g === "completed" || g === "cancelled") return false;
-      }
-      if (q && !i.title.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [issues, filter, me, meta]);
+  const viewId = params.get("view");
+  const projectViews = useViews((s) => (projectId ? s.byProject[projectId] : undefined));
+  const saved = viewId ? projectViews?.find((v) => v.id === viewId) : undefined;
+  // 视图列表还没回来时不能把 URL 当成最终状态，否则会把默认值写回去盖掉保存的配置。
+  const pendingView = !!viewId && !!projectId && !projectViews;
+  const base = useMemo(() => (saved ? normalizeConfig(saved.config) : DEFAULT_CONFIG), [saved]);
+  const decoded = useMemo(() => decodeConfig(params, base), [params, base]);
+  const config: ViewConfig = useMemo(
+    () => ({ ...decoded, kind: ui.viewMode }),
+    [decoded, ui.viewMode],
+  );
 
-  const groups = useMemo<IssueGroup[]>(() => {
-    if (states) {
-      return states.map((st) => ({
-        key: st.id,
-        title: st.name,
-        state: st,
-        issues: filtered
-          .filter((i) => i.state_id === st.id)
-          .sort((a, b) => a.sort_order - b.sort_order),
-      }));
-    }
-    // 跨项目：按状态分组类型归并，并以优先级排序
-    const order = ["started", "unstarted", "backlog", "completed", "cancelled"] as const;
-    const names = {
-      started: "进行中",
-      unstarted: "待处理",
-      backlog: "待规划",
-      completed: "已完成",
-      cancelled: "已取消",
-    };
-    return order
-      .map((grp) => {
-        const list = filtered
-          .filter((i) => meta[i.project_id]?.states.find((s) => s.id === i.state_id)?.group === grp)
-          .sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]);
-        const sample = list[0] && meta[list[0].project_id]?.states.find((s) => s.group === grp);
-        return {
-          key: grp,
-          title: names[grp],
-          state: sample ? { ...sample, name: names[grp] } : undefined,
-          issues: list,
-        };
-      })
-      .filter((g) => g.issues.length > 0);
-  }, [filtered, states, meta]);
+  const write = (next: ViewConfig) => {
+    const p = encodeConfig(next, base);
+    if (viewId) p.set("view", viewId);
+    setParams(p, { replace: true });
+  };
+  const patch = (c: Partial<ViewConfig>) => {
+    if (c.kind) ui.set({ viewMode: c.kind });
+    write({ ...config, ...c });
+  };
 
-  const flat = useMemo(() => groups.flatMap((g) => g.issues.map((i) => i.id)), [groups]);
+  // 视图类型同时由快捷键和命令面板驱动，存在 ui store 里，这里和 URL 双向同步。
+  const urlKind = params.get("kind") ?? (saved ? base.kind : null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 只响应 URL 或保存视图的变化
+  useEffect(() => {
+    if (pendingView || !urlKind) return;
+    if (urlKind !== useUi.getState().viewMode) ui.set({ viewMode: urlKind as ViewKind });
+  }, [urlKind, saved?.id, pendingView]);
+  // 读 getState 而不是闭包：上面的 effect 可能在同一轮刚改过 store。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 只响应视图类型变化，见上
+  useEffect(() => {
+    if (pendingView) return;
+    const mode = useUi.getState().viewMode;
+    if ((urlKind ?? base.kind) !== mode) write({ ...decoded, kind: mode });
+  }, [ui.viewMode]);
+
+  const groupOf = useCallback(
+    (i: Issue) => meta[i.project_id]?.states.find((s) => s.id === i.state_id)?.group,
+    [meta],
+  );
+
+  const filtered = useMemo(
+    () => filterIssues(issues, config.filter, { groupOf, today: today() }),
+    [issues, config.filter, groupOf],
+  );
+  const sorted = useMemo(
+    () => sortIssues(filtered, config.sortBy, config.sortDesc),
+    [filtered, config.sortBy, config.sortDesc],
+  );
+
+  const scopeLabels = useMemo(() => {
+    const ids = projectId ? [projectId] : [...new Set(issues.map((i) => i.project_id))];
+    return ids.flatMap((id) => meta[id]?.labels ?? []);
+  }, [projectId, issues, meta]);
+
+  const groupBy: GroupBy =
+    config.kind === "list" || config.kind === "board" ? config.groupBy : "none";
+  const groups = useMemo(
+    () =>
+      groupIssues(sorted, groupBy, {
+        groupOf,
+        today: today(),
+        states,
+        statesOf: (p) => meta[p]?.states ?? [],
+        members,
+        labels: scopeLabels,
+        // 看板的空列也是拖放落点；项目的状态分组保留空组，方便直接在组里新建。
+        keepEmpty: config.kind === "board" || (groupBy === "state" && !!states),
+      }),
+    [sorted, groupBy, groupOf, states, meta, members, scopeLabels, config.kind],
+  );
+
+  const flat = useMemo(
+    () => [...new Set(groups.flatMap((g) => g.issues.map((i) => i.id)))],
+    [groups],
+  );
 
   // 离开视图时清理选中态
   useEffect(() => () => useUi.getState().set({ focusedId: null, peekId: null }), []);
 
-  // 打开筛选栏时把焦点交给输入框，避免用户还要再点一次。
+  // 动画没被看到（任务被筛掉、视图没有高亮）时也要清掉，否则切视图后会迟到地闪一下。
+  useEffect(() => {
+    if (!ui.flashId) return;
+    const t = setTimeout(() => useUi.getState().set({ flashId: null }), 1300);
+    return () => clearTimeout(t);
+  }, [ui.flashId]);
+
+  const count = filterCount(config.filter);
+  const [filterOpen, setFilterOpen] = useState(count > 0);
   const filterRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (filterOpen) filterRef.current?.focus();
   }, [filterOpen]);
+  // 切到带筛选条件的视图时自动展开，用户才知道结果为什么变少了。
+  useEffect(() => {
+    if (count > 0) setFilterOpen(true);
+  }, [count]);
+
+  const [displayAnchor, setDisplayAnchor] = useState<HTMLElement | null>(null);
+  const [saveAnchor, setSaveAnchor] = useState<HTMLElement | null>(null);
+  const createView = useViews((s) => s.create);
+  const updateView = useViews((s) => s.update);
+  const dirty = !!saved && JSON.stringify(config) !== JSON.stringify(base);
+  const canSave =
+    !saved && params.toString() !== "" && JSON.stringify(config) !== JSON.stringify(DEFAULT_CONFIG);
 
   const move = (d: 1 | -1) => {
     if (!flat.length) return;
@@ -147,44 +229,161 @@ export function IssuesView({
 
   const open = (id: string) => ui.set({ focusedId: id, peekId: id });
   const quickCreate = (stateId: string) => ui.set({ createOpen: true, createStateId: stateId });
-  const filterCount =
-    filter.priority.length +
-    (filter.mine ? 1 : 0) +
-    (filter.hideClosed ? 1 : 0) +
-    (filter.text ? 1 : 0);
+
+  const filterOptions = useMemo(
+    () => ({
+      states: states
+        ? states.map((s) => ({
+            id: s.id,
+            label: s.name,
+            icon: <StateIcon group={s.group} color={s.color} />,
+          }))
+        : (Object.entries(STATE_GROUP_LABEL) as [keyof typeof STATE_GROUP_LABEL, string][]).map(
+            ([g, label]) => ({
+              id: g,
+              label,
+              icon: <StateIcon group={g} color="#71717a" />,
+            }),
+          ),
+      priorities: PRIORITIES.map((p) => ({
+        id: p.key,
+        label: p.key === "none" ? "无优先级" : p.label,
+        icon: <PriorityIcon priority={p.key} />,
+      })),
+      assignees: [
+        { id: "none", label: "未指派" },
+        ...members.map((m) => ({
+          id: m.id,
+          label: m.id === me ? `${m.name}（我）` : m.name,
+          keywords: m.email,
+          icon: <Avatar name={m.name} size={16} />,
+        })),
+      ],
+      labels: scopeLabels.map((l) => ({
+        id: l.id,
+        label: l.name,
+        icon: <LabelDot color={l.color} />,
+      })),
+    }),
+    [states, members, me, scopeLabels],
+  );
+
+  const body = () => {
+    const empty = filtered.length === 0;
+    // 日历和时间线即使筛选后为空也保留网格：它们同时是拖放和新建的入口。
+    if (empty && (config.kind === "list" || config.kind === "table" || config.kind === "board")) {
+      return (
+        <Empty
+          icon={<SearchX size={18} />}
+          title="没有符合筛选条件的任务"
+          desc="换个条件试试，或者清除筛选"
+          action={
+            <Button onClick={() => patch({ filter: DEFAULT_CONFIG.filter })}>清除筛选</Button>
+          }
+        />
+      );
+    }
+    switch (config.kind) {
+      case "list":
+        return (
+          <IssueList
+            groups={groups}
+            projects={projects}
+            onOpen={open}
+            onQuickCreate={states ? quickCreate : undefined}
+          />
+        );
+      case "board":
+        return (
+          <IssueBoard
+            groups={groups}
+            projects={projects}
+            onOpen={open}
+            onQuickCreate={states ? quickCreate : undefined}
+            manual={config.sortBy === "manual"}
+          />
+        );
+      case "table":
+        return (
+          <IssueTable
+            issues={sorted}
+            projects={projects}
+            columns={config.columns}
+            sortBy={config.sortBy}
+            sortDesc={config.sortDesc}
+            onSort={(sortBy, sortDesc) => patch({ sortBy, sortDesc })}
+            onOpen={open}
+          />
+        );
+      case "calendar":
+        return <IssueCalendar issues={sorted} onOpen={open} />;
+      case "timeline":
+        return <IssueTimeline issues={sorted} projects={projects} onOpen={open} />;
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200/80 px-5">
         <span className="text-zinc-400">{icon}</span>
         <h1 className="truncate text-[14px] font-medium">{title}</h1>
-        <span className="text-[13px] text-zinc-400">{filtered.length}</span>
+        {saved && (
+          <span className="inline-flex min-w-0 items-center gap-1 text-[13px] text-zinc-500">
+            <span className="text-zinc-300">/</span>
+            <Bookmark size={12} className="shrink-0" />
+            <span className="truncate">{saved.name}</span>
+          </span>
+        )}
+        <span className="text-[13px] tabular-nums text-zinc-400">{filtered.length}</span>
         <span className="flex-1" />
+        {dirty && saved && (
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setParams({ view: saved.id }, { replace: true })}
+            >
+              还原
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await updateView(saved, { config });
+                  setParams({ view: saved.id }, { replace: true });
+                  toast.success("视图已更新");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              <Save size={13} /> 更新视图
+            </Button>
+          </>
+        )}
+        {projectId && canSave && (
+          <Button variant="ghost" onClick={(e) => setSaveAnchor(e.currentTarget)}>
+            <Bookmark size={13} /> 保存为视图
+          </Button>
+        )}
         <Button
-          variant={filterCount ? "secondary" : "ghost"}
+          variant={count ? "secondary" : "ghost"}
           onClick={() => setFilterOpen((o) => !o)}
           title="筛选 (F)"
         >
           <SlidersHorizontal size={13} /> 筛选
-          {filterCount > 0 && (
-            <span className="rounded bg-zinc-900 px-1 text-[10px] text-white">{filterCount}</span>
+          {count > 0 && (
+            <span className="rounded bg-accent px-1 text-[10px] tabular-nums text-white">
+              {count}
+            </span>
           )}
         </Button>
-        <div className="flex rounded-md border border-zinc-200 p-0.5" title="切换视图 (V)">
-          {(["list", "board"] as const).map((m) => (
-            <button
-              type="button"
-              key={m}
-              onClick={() => ui.set({ viewMode: m })}
-              className={cn(
-                "flex h-6 w-7 items-center justify-center rounded text-zinc-500",
-                ui.viewMode === m && "bg-zinc-100 text-zinc-900",
-              )}
-            >
-              {m === "list" ? <List size={14} /> : <Columns3 size={14} />}
-            </button>
-          ))}
-        </div>
+        <Button variant="ghost" onClick={(e) => setDisplayAnchor(e.currentTarget)}>
+          显示
+        </Button>
+        <Segmented
+          value={config.kind}
+          options={VIEW_OPTIONS}
+          onChange={(kind) => patch({ kind })}
+        />
         <Button variant="primary" onClick={() => ui.set({ createOpen: true })}>
           <Plus size={14} /> 新建任务{" "}
           <Kbd className="border-white/20 bg-white/10 text-white/80">C</Kbd>
@@ -192,63 +391,16 @@ export function IssuesView({
       </header>
 
       {filterOpen && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200/80 bg-zinc-50/60 px-5 py-2">
-          <input
-            ref={filterRef}
-            value={filter.text}
-            onChange={(e) => setFilter({ ...filter, text: e.target.value })}
-            onKeyDown={(e) => e.key === "Escape" && (e.target as HTMLElement).blur()}
-            placeholder="按标题筛选…"
-            className="h-7 w-48 rounded-md border border-zinc-200 bg-white px-2 text-xs outline-none focus:border-zinc-400"
-          />
-          {PRIORITIES.map((p) => {
-            const on = filter.priority.includes(p.key);
-            return (
-              <button
-                type="button"
-                key={p.key}
-                onClick={() =>
-                  setFilter({
-                    ...filter,
-                    priority: on
-                      ? filter.priority.filter((x) => x !== p.key)
-                      : [...filter.priority, p.key],
-                  })
-                }
-                className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs",
-                  on
-                    ? "border-zinc-400 bg-white text-zinc-900"
-                    : "border-zinc-200 text-zinc-500 hover:bg-white",
-                )}
-              >
-                <PriorityIcon priority={p.key} size={12} /> {p.label}
-              </button>
-            );
-          })}
-          <Toggle on={filter.mine} onClick={() => setFilter({ ...filter, mine: !filter.mine })}>
-            仅我负责的
-          </Toggle>
-          <Toggle
-            on={filter.hideClosed}
-            onClick={() => setFilter({ ...filter, hideClosed: !filter.hideClosed })}
-          >
-            隐藏已完成
-          </Toggle>
-          {filterCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setFilter(EMPTY_FILTER)}
-              className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-800"
-            >
-              <X size={12} /> 清除
-            </button>
-          )}
-        </div>
+        <FilterBar
+          filter={config.filter}
+          onChange={(filter) => patch({ filter })}
+          options={filterOptions}
+          inputRef={filterRef}
+        />
       )}
 
       <div className="flex min-h-0 flex-1">
-        {issues.length === 0 ? (
+        {issues.length === 0 && config.kind !== "calendar" && config.kind !== "timeline" ? (
           <Empty
             icon={icon}
             title={emptyText}
@@ -259,52 +411,40 @@ export function IssuesView({
               </Button>
             }
           />
-        ) : ui.viewMode === "list" ? (
-          <IssueList
-            groups={groups}
-            projects={projects}
-            onOpen={open}
-            onQuickCreate={states ? quickCreate : undefined}
-          />
         ) : (
-          <IssueBoard
-            groups={groups}
-            projects={projects}
-            onOpen={open}
-            onQuickCreate={states ? quickCreate : undefined}
-          />
+          body()
         )}
         {ui.peekId && (
-          <div className="w-[min(720px,55vw)] shrink-0 animate-in border-l border-zinc-200 shadow-[-8px_0_24px_-12px_rgb(0_0_0/0.08)]">
+          <div className="w-[min(720px,55vw)] shrink-0 animate-drawer border-l border-zinc-200 shadow-[-8px_0_24px_-12px_rgb(0_0_0/0.08)]">
             <IssueDetail issueId={ui.peekId} mode="peek" />
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function Toggle({
-  on,
-  onClick,
-  children,
-}: {
-  on: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-7 items-center rounded-md border px-2 text-xs",
-        on
-          ? "border-zinc-400 bg-white text-zinc-900"
-          : "border-zinc-200 text-zinc-500 hover:bg-white",
+      {displayAnchor && (
+        <DisplayMenu
+          anchor={displayAnchor}
+          config={config}
+          onChange={patch}
+          onClose={() => setDisplayAnchor(null)}
+        />
       )}
-    >
-      {children}
-    </button>
+      {saveAnchor && projectId && (
+        <SaveViewPopover
+          anchor={saveAnchor}
+          onClose={() => setSaveAnchor(null)}
+          onSave={async (name) => {
+            try {
+              const v = await createView(projectId, name, config);
+              setParams({ view: v.id }, { replace: true });
+              toast.success(`已保存视图「${name}」`);
+            } catch (e) {
+              toast.error((e as Error).message);
+              throw e;
+            }
+          }}
+        />
+      )}
+    </div>
   );
 }

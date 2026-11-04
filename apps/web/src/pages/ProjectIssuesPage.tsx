@@ -37,6 +37,7 @@ export function ProjectIssuesPage() {
       icon={<FolderKanban size={15} />}
       issues={issues}
       states={states}
+      projectId={projectId}
       emptyText="这个项目还没有任务"
     />
   );

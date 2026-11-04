@@ -81,6 +81,8 @@ pub struct Issue {
     pub label_ids: Vec<String>,
     #[sqlx(skip)]
     pub attachments: Vec<Attachment>,
+    #[sqlx(skip)]
+    pub comment_count: i64,
 }
 
 #[derive(Debug, Serialize, FromRow)]

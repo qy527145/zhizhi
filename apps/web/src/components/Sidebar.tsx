@@ -1,5 +1,5 @@
 import { Kbd } from "@zhizhi/ui/ui";
-import { ChevronsUpDown, FolderKanban, Inbox, Plus, Search, Settings } from "lucide-react";
+import { ChevronsUpDown, Inbox, Plus, Search, Settings } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router";
 import { cn, modKey } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { Avatar } from "./icons";
+import { ProjectNav } from "./ProjectNav";
 
 const navItem = ({ isActive }: { isActive: boolean }) =>
   cn(
@@ -124,11 +125,7 @@ export function Sidebar() {
       </div>
       <nav className="mt-1 flex-1 space-y-0.5 overflow-y-auto px-2">
         {projects.map((p) => (
-          <NavLink key={p.id} to={`/${slug}/projects/${p.id}`} className={navItem}>
-            <FolderKanban size={14} className="text-zinc-400" />
-            <span className="flex-1 truncate">{p.name}</span>
-            <span className="font-mono text-[10px] text-zinc-400">{p.identifier}</span>
-          </NavLink>
+          <ProjectNav key={p.id} project={p} />
         ))}
         {projects.length === 0 && (
           <button

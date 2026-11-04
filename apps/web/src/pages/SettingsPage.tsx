@@ -1,9 +1,12 @@
+import type { ApiToken, CreatedToken } from "@zhizhi/shared";
 import { cn } from "@zhizhi/ui/lib/utils";
 import { Button, Input } from "@zhizhi/ui/ui";
-import { Settings, Trash2, UserPlus } from "lucide-react";
+import { Copy, KeyRound, Settings, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Avatar, LabelDot } from "@/components/icons";
+import { api } from "@/lib/api";
 import { LABEL_COLORS } from "@/lib/constants";
+import { relativeTime } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import { useIssues } from "@/stores/issues";
 import { toast } from "@/stores/toast";
@@ -80,12 +83,114 @@ export function SettingsPage() {
             </div>
           </section>
 
+          <TokensSection />
+
           {projects.map((p) => (
             <ProjectSettings key={p.id} projectId={p.id} />
           ))}
         </div>
       </div>
     </div>
+  );
+}
+
+/** 个人访问令牌：给 CLI 和 Agent 用。明文只在创建时显示一次。 */
+function TokensSection() {
+  const [tokens, setTokens] = useState<ApiToken[] | null>(null);
+  const [name, setName] = useState("");
+  const [created, setCreated] = useState<CreatedToken | null>(null);
+
+  useEffect(() => {
+    api
+      .tokens()
+      .then(setTokens)
+      .catch((e) => toast.error((e as Error).message));
+  }, []);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const t = await api.createToken(name.trim());
+      setCreated(t);
+      setName("");
+      setTokens((xs) => [
+        { id: t.id, name: t.name, prefix: t.prefix, created_at: t.created_at, last_used_at: null },
+        ...(xs ?? []),
+      ]);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+  const revoke = async (t: ApiToken) => {
+    if (!confirm(`确定吊销令牌「${t.name}」？使用它的 CLI 和 Agent 会立即失去访问权限。`)) return;
+    try {
+      await api.revokeToken(t.id);
+      setTokens((xs) => (xs ?? []).filter((x) => x.id !== t.id));
+      if (created?.id === t.id) setCreated(null);
+      toast.success("令牌已吊销");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  return (
+    <section>
+      <h3 className="mb-1 text-[13px] font-medium">访问令牌</h3>
+      <p className="mb-3 text-xs text-zinc-500">
+        让 zhizhi 命令行和 Agent 以你的身份访问。令牌权限等同于你的账号，不要提交到代码仓库。
+      </p>
+      <form onSubmit={create} className="mb-3 flex gap-2">
+        <Input
+          value={name}
+          maxLength={40}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="令牌名称，如「我的笔记本」"
+        />
+        <Button type="submit" variant="primary" className="h-8 shrink-0" disabled={!name.trim()}>
+          <KeyRound size={14} /> 创建令牌
+        </Button>
+      </form>
+      {created && (
+        <div className="mb-3 animate-in rounded-lg border border-accent/30 bg-accent-soft p-3">
+          <div className="mb-2 text-xs font-medium text-accent-ink">
+            请现在复制，关闭页面后无法再次查看
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1.5 font-mono text-xs">
+              {created.token}
+            </code>
+            <Button
+              className="shrink-0"
+              onClick={() => {
+                navigator.clipboard.writeText(created.token);
+                toast.success("令牌已复制");
+              }}
+            >
+              <Copy size={13} /> 复制
+            </Button>
+          </div>
+        </div>
+      )}
+      {tokens && tokens.length > 0 && (
+        <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200">
+          {tokens.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
+              <KeyRound size={14} className="shrink-0 text-zinc-400" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-medium">{t.name}</div>
+                <div className="text-xs text-zinc-500">
+                  <span className="font-mono">{t.prefix}…</span>{" "}
+                  {t.last_used_at ? `${relativeTime(t.last_used_at)}使用过` : "尚未使用"}
+                </div>
+              </div>
+              <Button variant="ghost" className="hover:text-red-600" onClick={() => revoke(t)}>
+                吊销
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

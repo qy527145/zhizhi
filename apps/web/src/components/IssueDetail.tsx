@@ -358,8 +358,8 @@ function Timeline({ issue, members }: { issue: Issue; members: { id: string; nam
       setComments((cs) => [...cs, c]);
       setBody("");
       setFresh([]);
-      // 评论里的图片也算任务附件，刷新任务让附件区同步。
-      if (ids.length) useIssues.getState().upsert([await api.issue(issue.id)]);
+      // 刷新任务：评论数要变，评论里的图片也要进附件区。
+      useIssues.getState().upsert([await api.issue(issue.id)]);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {

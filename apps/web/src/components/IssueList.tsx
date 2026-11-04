@@ -1,16 +1,22 @@
-import type { Issue, IssueState, Project } from "@zhizhi/shared";
+import type { Issue, Project } from "@zhizhi/shared";
 import { cn } from "@zhizhi/ui/lib/utils";
 import { ChevronDown, Plus } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { useFlip } from "@/hooks/useFlip";
+import type { IssueGroup } from "@/lib/issueView";
 import { useUi } from "@/stores/ui";
 import { AssigneeButton, DueButton, LabelChips, PriorityButton, StateButton } from "./IssueProps";
-import { StateIcon } from "./icons";
+import { Avatar, LabelDot, PriorityIcon, StateIcon } from "./icons";
 
-export interface IssueGroup {
-  key: string;
-  title: string;
-  state?: IssueState;
-  issues: Issue[];
+export type { IssueGroup };
+
+/** 分组标题前的图标，列表和看板共用。 */
+export function GroupIcon({ group }: { group: IssueGroup }) {
+  if (group.state) return <StateIcon group={group.state.group} color={group.state.color} />;
+  if (group.priority) return <PriorityIcon priority={group.priority} />;
+  if (group.member) return <Avatar name={group.member} size={16} />;
+  if (group.labelColor) return <LabelDot color={group.labelColor} />;
+  return null;
 }
 
 const Row = memo(function Row({
@@ -18,11 +24,13 @@ const Row = memo(function Row({
   project,
   focused,
   onOpen,
+  flipKey,
 }: {
   issue: Issue;
   project?: Project;
   focused: boolean;
   onOpen: (id: string) => void;
+  flipKey: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const flash = useUi((s) => s.flashId === issue.id);
@@ -37,14 +45,14 @@ const Row = memo(function Row({
       role="button"
       tabIndex={-1}
       data-issue={issue.id}
+      data-flip={flipKey}
       onClick={() => onOpen(issue.id)}
       onKeyDown={(e) => {
         if (e.key === "Enter") onOpen(issue.id);
       }}
-      onAnimationEnd={() => flash && useUi.getState().set({ flashId: null })}
       onMouseMove={() => !focused && useUi.getState().set({ focusedId: issue.id })}
       className={cn(
-        "group flex h-10 cursor-pointer items-center gap-2 border-b border-zinc-100 pl-5 pr-4 transition-colors",
+        "group flex h-10 cursor-pointer items-center gap-2 border-b border-zinc-100 pl-5 pr-4",
         focused ? "bg-zinc-100/80" : "hover:bg-zinc-50",
         flash && "animate-flash",
       )}
@@ -76,9 +84,11 @@ export function IssueList({
   const focusedId = useUi((s) => s.focusedId);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const projectById = useMemo(() => Object.fromEntries(projects.map((p) => [p.id, p])), [projects]);
+  const root = useRef<HTMLDivElement>(null);
+  useFlip(root, groups.map((g) => `${g.key}:${g.issues.map((i) => i.id).join()}`).join("|"));
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div ref={root} className="stagger flex-1 overflow-y-auto">
       {groups.map((g) => (
         <section key={g.key}>
           <div className="sticky top-0 z-10 flex h-9 items-center gap-2 border-b border-zinc-100 bg-zinc-50/95 pl-4 pr-4 backdrop-blur">
@@ -90,11 +100,11 @@ export function IssueList({
               <ChevronDown
                 size={13}
                 className={cn(
-                  "text-zinc-400 transition-transform",
+                  "text-zinc-400 transition-transform duration-150",
                   collapsed[g.key] && "-rotate-90",
                 )}
               />
-              {g.state && <StateIcon group={g.state.group} color={g.state.color} />}
+              <GroupIcon group={g} />
               {g.title}
               <span className="font-normal text-zinc-400">{g.issues.length}</span>
             </button>
@@ -103,7 +113,7 @@ export function IssueList({
               <button
                 type="button"
                 onClick={() => onQuickCreate(g.state?.id ?? "")}
-                className="rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700"
+                className="press rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700"
                 aria-label="在此状态下新建任务"
               >
                 <Plus size={13} />
@@ -118,6 +128,7 @@ export function IssueList({
                 project={projectById[i.project_id]}
                 focused={focusedId === i.id}
                 onOpen={onOpen}
+                flipKey={`${g.key}/${i.id}`}
               />
             ))}
         </section>
