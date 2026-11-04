@@ -27,6 +27,24 @@ export const STATE_GROUP_LABEL: Record<StateGroup, string> = {
   cancelled: "已取消",
 };
 
+/**
+ * 状态分组 → 语义色。每个概念在所有视图里都是同一个颜色：
+ * 进行中永远是蓝，完成永远是绿，取消和积压退回中性色。
+ * 取的是 index.css 里的 tone token，换主题时跟着变。
+ */
+export const stateTone = (g: StateGroup): { fg: string; bg: string } => {
+  switch (g) {
+    case "started":
+      return { fg: "var(--color-tone-blue)", bg: "var(--color-tone-blue-soft)" };
+    case "completed":
+      return { fg: "var(--color-tone-green)", bg: "var(--color-tone-green-soft)" };
+    case "cancelled":
+      return { fg: "var(--color-zinc-500)", bg: "var(--color-zinc-100)" };
+    default:
+      return { fg: "var(--color-zinc-500)", bg: "var(--color-zinc-100)" };
+  }
+};
+
 export const LABEL_COLORS = [
   "#ef4444",
   "#f97316",

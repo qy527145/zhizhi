@@ -3,6 +3,7 @@ import { cn } from "@zhizhi/ui/lib/utils";
 import { MessageSquare, Paperclip, Plus } from "lucide-react";
 import { memo, useMemo, useRef, useState } from "react";
 import { useFlip } from "@/hooks/useFlip";
+import { stateTone } from "@/lib/constants";
 import { useIssues } from "@/stores/issues";
 import { toast } from "@/stores/toast";
 import { useUi } from "@/stores/ui";
@@ -40,6 +41,10 @@ const Card = memo(function Card({
   onOpen: (id: string) => void;
 }) {
   const flash = useUi((s) => s.flashId === issue.id);
+  const state = useIssues((s) =>
+    s.meta[issue.project_id]?.states.find((x) => x.id === issue.state_id),
+  );
+  const tone = state ? stateTone(state.group) : null;
   const [dragging, setDragging] = useState(false);
   return (
     // 卡片内含属性按钮，不能整体换成 <button>；用 role + 键盘处理补齐可访问性。
@@ -62,15 +67,34 @@ const Card = memo(function Card({
       }}
       onMouseMove={() => !focused && useUi.getState().set({ focusedId: issue.id })}
       className={cn(
-        "lift cursor-pointer overflow-hidden rounded-lg bg-white p-3 shadow-card",
+        "lift cursor-pointer overflow-hidden rounded-xl bg-card p-3 shadow-card",
         focused && "ring-1 ring-accent/40",
         dragging && "opacity-40",
         flash && "animate-flash",
       )}
     >
       <Cover issue={issue} />
-      <div className="font-mono text-[11px] tracking-tight text-zinc-400">
-        {project?.identifier}-{issue.seq}
+      {/* 状态点 + 编号：一行里先说「在哪」，再读标题。 */}
+      <div className="flex items-center gap-1.5">
+        {state && (
+          <span
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ background: state.color }}
+            aria-hidden
+          />
+        )}
+        <span className="font-mono text-[11px] tracking-tight text-zinc-400">
+          {project?.identifier}-{issue.seq}
+        </span>
+        <span className="flex-1" />
+        {state && tone && (
+          <span
+            className="shrink-0 rounded px-1.5 py-px text-[10px] text-zinc-600"
+            style={{ background: tone.bg, color: tone.fg }}
+          >
+            {state.name}
+          </span>
+        )}
       </div>
       <div className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug text-zinc-800">
         {issue.title}
@@ -188,7 +212,7 @@ export function IssueBoard({
           }}
           onDrop={(e) => onDrop(e, g)}
           className={cn(
-            "flex w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-zinc-100/70 transition-colors duration-150",
+            "flex w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-surface transition-colors duration-150",
             over?.key === g.key && "bg-accent-soft",
           )}
         >
@@ -196,12 +220,12 @@ export function IssueBoard({
           <span
             aria-hidden
             className="h-[3px] shrink-0"
-            style={{ backgroundColor: g.state?.color ?? g.labelColor ?? "#d4d4d8" }}
+            style={{ backgroundColor: g.state?.color ?? g.labelColor ?? "#e4e4e2" }}
           />
           <div className="flex h-10 items-center gap-2 px-3 text-[13px] font-medium text-zinc-700">
             <GroupIcon group={g} />
             <span className="truncate">{g.title}</span>
-            <span className="rounded-full bg-white/70 px-1.5 font-mono text-[11px] font-normal tabular-nums text-zinc-500">
+            <span className="rounded-full bg-canvas/70 px-1.5 font-mono text-[11px] font-normal tabular-nums text-zinc-500">
               {g.issues.length}
             </span>
             <span className="flex-1" />

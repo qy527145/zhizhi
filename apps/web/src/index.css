@@ -12,6 +12,25 @@
   --color-accent: #3f5bd9;
   --color-accent-soft: #eef1fd;
   --color-accent-ink: #2a3f9e;
+
+  /* 四级底色，暖白而不是纯灰：相邻两档只差 2%~4% 的明度，层次靠色阶不靠描边。
+     看板列落在 surface，卡片落在 card（比列亮一档），浮层落在 elevated。
+     明度顺序在所有层里一致，「浮起来」就永远是同一个方向。 */
+  --color-canvas: #ffffff;
+  --color-surface: #f6f6f4;
+  --color-card: #fdfdfc;
+  --color-elevated: #ffffff;
+
+  /* 状态语义色：同一个概念在任何视图里都是同一个颜色。
+     彩色只用在状态点和小标签上，主按钮沿用 accent，不与语义色抢。 */
+  --color-tone-blue: #3f5bd9;
+  --color-tone-blue-soft: #eef1fd;
+  --color-tone-green: #12a150;
+  --color-tone-green-soft: #e7f7ee;
+  --color-tone-orange: #e07b1a;
+  --color-tone-orange-soft: #fdf1e3;
+  --color-tone-violet: #7a5af8;
+  --color-tone-violet-soft: #f0ecfe;
   --shadow-pop: 0 0 0 1px rgb(15 23 42 / 0.06), 0 12px 32px -8px rgb(15 23 42 / 0.22);
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 0 0 1px rgb(15 23 42 / 0.06);
   --shadow-lift: 0 0 0 1px rgb(15 23 42 / 0.08), 0 16px 32px -12px rgb(15 23 42 / 0.28);
