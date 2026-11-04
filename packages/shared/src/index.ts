@@ -87,11 +87,74 @@ export interface Issue {
   priority: Priority;
   assignee_id: string | null;
   due_date: string | null;
+  /** 开始日期（YYYY-MM-DD），时间线视图使用。 */
+  start_date: string | null;
   sort_order: number;
   created_by: string;
   created_at: string;
   updated_at: string;
   label_ids: string[];
+  attachments: Attachment[];
+}
+
+/** 附件元数据，对应 `apps/server/src/models.rs` 的 `Attachment`。正文用 `![说明](ATT-xxx)` 引用。 */
+export interface Attachment {
+  id: string;
+  filename: string;
+  mime: string;
+  size_bytes: number;
+  issue_id: string | null;
+}
+
+/** 个人访问令牌（列表中不含明文）。 */
+export interface ApiToken {
+  id: string;
+  name: string;
+  prefix: string;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+/** `POST /api/tokens` 的响应体：`token` 为明文，只返回这一次。 */
+export interface CreatedToken {
+  id: string;
+  name: string;
+  prefix: string;
+  token: string;
+  created_at: string;
+}
+
+export type ViewKind = "list" | "board" | "table" | "calendar" | "timeline";
+export type GroupBy = "state" | "priority" | "assignee" | "label" | "none";
+export type SortBy = "manual" | "priority" | "due_date" | "updated_at" | "created_at";
+
+/** 任务筛选条件；数组为空表示不限制。 */
+export interface IssueFilter {
+  states: string[];
+  priorities: Priority[];
+  /** 成员 id，`"none"` 表示未指派。 */
+  assignees: string[];
+  labels: string[];
+  text: string;
+  due: "any" | "overdue" | "week" | "none";
+  hideClosed: boolean;
+}
+
+/** 保存的视图配置，存在 `saved_views.config` 中。 */
+export interface ViewConfig {
+  kind: ViewKind;
+  groupBy: GroupBy;
+  sortBy: SortBy;
+  filter: IssueFilter;
+}
+
+export interface SavedView {
+  id: string;
+  project_id: string;
+  name: string;
+  config: ViewConfig;
+  position: number;
+  created_at: string;
 }
 
 export interface Comment {
@@ -127,7 +190,11 @@ export type IssuePatch = Partial<
     | "priority"
     | "assignee_id"
     | "due_date"
+    | "start_date"
     | "label_ids"
     | "sort_order"
   >
->;
+> & {
+  /** 新上传、需要绑定到任务上的附件 id。 */
+  attachment_ids?: string[];
+};

@@ -1,4 +1,5 @@
 use std::env;
+use std::path::PathBuf;
 
 use thiserror::Error;
 
@@ -11,6 +12,8 @@ pub struct Config {
     pub log_filter: String,
     pub database_url: String,
     pub jwt_secret: String,
+    /// 附件落盘目录；数据库只存元数据，部署时需要持久化这个目录。
+    pub attachment_dir: PathBuf,
 }
 
 impl Config {
@@ -36,12 +39,18 @@ impl Config {
             }
         };
 
+        let attachment_dir = match env::var("ATTACHMENT_DIR") {
+            Ok(dir) if !dir.is_empty() => PathBuf::from(dir),
+            _ => PathBuf::from("./data/attachments"),
+        };
+
         Ok(Self {
             host,
             port,
             log_filter,
             database_url,
             jwt_secret,
+            attachment_dir,
         })
     }
 
@@ -69,6 +78,7 @@ mod tests {
             log_filter: "info".to_owned(),
             database_url: "sqlite::memory:".to_owned(),
             jwt_secret: "test".to_owned(),
+            attachment_dir: std::path::PathBuf::from("./data/attachments"),
         };
         assert_eq!(config.addr(), "0.0.0.0:8080");
     }

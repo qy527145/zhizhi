@@ -68,6 +68,17 @@ pub fn verify_password(password: &str, hash: &str) -> bool {
 /// 已认证用户。作为 handler 参数即要求请求携带有效的 Bearer Token。
 pub struct AuthUser {
     pub id: String,
+    /// 是否通过个人访问令牌认证；令牌不能用来管理令牌。
+    pub via_token: bool,
+}
+
+/// 个人访问令牌的固定前缀，用来和 JWT 区分。
+pub const TOKEN_PREFIX: &str = "zhz_";
+
+/// 令牌只存哈希，库泄露也无法还原明文。
+pub fn hash_token(token: &str) -> String {
+    use sha2::{Digest, Sha256};
+    hex::encode(Sha256::digest(token.as_bytes()))
 }
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -83,7 +94,28 @@ impl FromRequestParts<AppState> for AuthUser {
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.strip_prefix("Bearer "))
             .ok_or(AppError::Unauthorized)?;
+        if token.starts_with(TOKEN_PREFIX) {
+            let row: Option<(String, String)> = sqlx::query_as(
+                "SELECT id, user_id FROM api_tokens WHERE token_hash = ? AND revoked_at IS NULL",
+            )
+            .bind(hash_token(token))
+            .fetch_optional(&state.db)
+            .await?;
+            let (token_id, user_id) = row.ok_or(AppError::Unauthorized)?;
+            sqlx::query("UPDATE api_tokens SET last_used_at = ? WHERE id = ?")
+                .bind(Utc::now())
+                .bind(token_id)
+                .execute(&state.db)
+                .await?;
+            return Ok(AuthUser {
+                id: user_id,
+                via_token: true,
+            });
+        }
         let id = state.jwt.verify(token)?;
-        Ok(AuthUser { id })
+        Ok(AuthUser {
+            id,
+            via_token: false,
+        })
     }
 }

@@ -72,12 +72,15 @@ pub struct Issue {
     pub priority: String,
     pub assignee_id: Option<String>,
     pub due_date: Option<String>,
+    pub start_date: Option<String>,
     pub sort_order: f64,
     pub created_by: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     #[sqlx(skip)]
     pub label_ids: Vec<String>,
+    #[sqlx(skip)]
+    pub attachments: Vec<Attachment>,
 }
 
 #[derive(Debug, Serialize, FromRow)]
@@ -97,6 +100,24 @@ pub struct Activity {
     pub field: String,
     pub old_value: Option<String>,
     pub new_value: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct Attachment {
+    pub id: String,
+    pub filename: String,
+    pub mime: String,
+    pub size_bytes: i64,
+    pub issue_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct ApiToken {
+    pub id: String,
+    pub name: String,
+    pub prefix: String,
+    pub last_used_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
 

@@ -101,6 +101,9 @@ GET|POST /projects/{id}/states             GET|POST /projects/{id}/labels   DELE
 GET|POST /projects/{id}/issues             GET /workspaces/{slug}/my-issues
 GET|PATCH|DELETE /issues/{id}
 GET|POST /issues/{id}/comments             GET /issues/{id}/activities
+POST   /workspaces/{slug}/files            GET /files/{id}
+GET|POST /tokens                           DELETE /tokens/{id}
+GET|POST /projects/{id}/views              PATCH|DELETE /views/{id}
 ```
 
 PATCH 任务时，`assignee_id` / `due_date` 传 `null` 表示清空，不传表示不修改。
@@ -117,6 +120,7 @@ PATCH 任务时，`assignee_id` / `due_date` 传 `null` 表示清空，不传表
 | `RUST_LOG`     | `info`               | tracing 过滤器                           |
 | `DATABASE_URL` | `sqlite://zhizhi.db` | SQLite 位置，相对路径基于启动目录        |
 | `JWT_SECRET`   | 开发默认值           | 生产环境必须覆盖，建议 32 字节以上随机串 |
+| `ATTACHMENT_DIR` | `./data/attachments` | 附件落盘目录，需持久化并随数据库一起备份 |
 
 ## 用模板创建新项目
 
