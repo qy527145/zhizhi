@@ -331,7 +331,14 @@ function Bar({
         onPointerMove={move}
         onPointerUp={finish}
       />
-      <span className="truncate">{issue.title}</span>
+      {/* 条太窄放不下标题时（单日任务），标题画在条右侧，随条一起移动。 */}
+      {len < 2 ? (
+        <span className="pointer-events-none absolute left-full ml-2 whitespace-nowrap text-[11px] font-medium text-zinc-600">
+          {issue.title}
+        </span>
+      ) : (
+        <span className="truncate">{issue.title}</span>
+      )}
       <span
         aria-hidden="true"
         data-handle="end"
