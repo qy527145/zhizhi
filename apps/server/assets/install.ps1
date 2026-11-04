@@ -20,8 +20,15 @@ try {
   $Artifact = $Latest.artifacts | Where-Object { $_.target -eq $Target } | Select-Object -First 1
   if (-not $Artifact) { throw "no build for $Target" }
 
+  # 清单里的 url 是相对路径，跟着服务地址走，部署换域名不用重新发布。
+  # PowerShell 不会自动把相对 URI 拼到 base 上，这里要手动处理。
+  $ArtifactUrl = $Artifact.url
+  if ($ArtifactUrl -notmatch '^https?://') {
+    $ArtifactUrl = if ($ArtifactUrl.StartsWith('/')) { "$BaseUrl$ArtifactUrl" } else { "$BaseUrl/$ArtifactUrl" }
+  }
+
   $Zip = Join-Path $Tmp 'zhizhi.zip'
-  Invoke-WebRequest $Artifact.url -OutFile $Zip
+  Invoke-WebRequest $ArtifactUrl -OutFile $Zip
   $Got = (Get-FileHash $Zip -Algorithm SHA256).Hash.ToLower()
   if ($Got -ne $Artifact.sha256) { throw "sha256 mismatch (got $Got, expected $($Artifact.sha256))" }
 
