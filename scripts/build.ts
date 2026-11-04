@@ -140,6 +140,10 @@ if (existsSync(cliBuilt)) {
   console.log(`  cli:    ${cliDest}`);
 }
 
+// Vite 的 emptyOutDir 会清空 apps/web/dist，连 .gitkeep 一起删掉。这个文件必须留在仓库里
+// （rust-embed 编译期要求目录存在），构建结束后补回来。
+await Bun.write(join(root, "apps/web/dist/.gitkeep"), "");
+
 const sizeMb = ((await Bun.file(destination).size) / 1024 / 1024).toFixed(1);
 console.log(`\n✓ ${destination}`);
 console.log(`  target: ${plan.triple}`);
