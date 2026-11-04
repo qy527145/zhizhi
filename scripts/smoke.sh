@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # 后端冒烟测试：启动一个使用临时数据库的服务并走通核心 API 流程。
 set -euo pipefail
-cd "$(dirname "$0")/../backend"
+cd "$(dirname "$0")/../apps/server"
 cargo build -q
 DB=$(mktemp -d)/smoke.db
 PORT=${PORT:-8099}
-DATABASE_URL="sqlite://$DB" BIND_ADDR="127.0.0.1:$PORT" JWT_SECRET=smoke ./target/debug/zhizhi-server >/tmp/zhizhi-smoke.log 2>&1 &
+DATABASE_URL="sqlite://$DB" HOST=127.0.0.1 PORT="$PORT" JWT_SECRET=smoke ../../target/debug/zhizhi-server >/tmp/zhizhi-smoke.log 2>&1 &
 PID=$!
 trap 'kill $PID 2>/dev/null' EXIT
-for _ in $(seq 50); do curl -sf "http://127.0.0.1:$PORT/api/health" >/dev/null && break; sleep 0.1; done
+for _ in $(seq 100); do curl -sf "http://127.0.0.1:$PORT/api/health" >/dev/null && break; sleep 0.1; done
 
 B="http://127.0.0.1:$PORT/api"
 TOKEN=""

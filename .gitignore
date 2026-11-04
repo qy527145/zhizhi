@@ -1,8 +1,27 @@
-target/
+# Rust
+/target
+
+# Node / Bun
 node_modules/
-dist/
+.turbo/
+*.tsbuildinfo
+
+# Build output
+/dist/
+/apps/web/dist/*
+!/apps/web/dist/.gitkeep
+
+# SQLite（运行期产生，迁移文件在 apps/server/migrations）
 *.db
 *.db-shm
 *.db-wal
+
+# Local overrides & secrets
 .env
+.env.local
+.env.*.local
+
+# Misc
+*.log
 .DS_Store
+.idea/

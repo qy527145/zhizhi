@@ -1,0 +1,11 @@
+{
+  "name": "@zhizhi/server",
+  "private": true,
+  "scripts": {
+    "dev": "cargo run",
+    "dev:watch": "cargo watch -x run",
+    "build": "cargo build --release",
+    "check": "cargo fmt --all --check && cargo clippy --all-targets -- -D warnings",
+    "test": "cargo test"
+  }
+}

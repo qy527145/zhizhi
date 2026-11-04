@@ -1,0 +1,7 @@
+# 统一 LF：仓库可能被克隆到各平台，换行符需要稳定。
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.exe binary

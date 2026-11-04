@@ -1,0 +1,11 @@
+[template]
+cargo_generate_version = ">=0.23"
+# 生成时不带走的目录：由安装/构建过程重新产生。
+ignore = [
+  "target",
+  "node_modules",
+  "/dist",
+  ".turbo",
+  "bun.lock",
+  "*.db",
+]

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "globalDependencies": ["**/.env", "**/.env.local", "tsconfig.base.json", "rust-toolchain.toml"],
+  "globalEnv": ["HOST", "PORT", "WEB_PORT", "RUST_LOG", "NODE_ENV", "DATABASE_URL", "JWT_SECRET"],
+  "globalPassThroughEnv": ["LIB", "INCLUDE", "LIBPATH"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "check": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "paths": {
+      "@zhizhi/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": ["src"]
+}

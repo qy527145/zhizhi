@@ -1,0 +1,31 @@
+{
+  "name": "zhizhi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "init": "bun run scripts/init.ts",
+    "dev": "turbo run dev",
+    "build": "bun run scripts/build.ts",
+    "build:win": "bun run scripts/build.ts win",
+    "build:mac": "bun run scripts/build.ts mac",
+    "build:linux": "bun run scripts/build.ts linux",
+    "check": "biome check . && turbo run check",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "fmt": "biome check --write . && cargo fmt --all",
+    "smoke": "./scripts/smoke.sh",
+    "clean": "bun run scripts/clean.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@types/bun": "1.4.4",
+    "turbo": "2.11.10",
+    "typescript": "7.0.2"
+  }
+}
