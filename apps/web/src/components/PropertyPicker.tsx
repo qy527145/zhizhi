@@ -7,6 +7,7 @@ import { toast } from "@/stores/toast";
 import { useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import { type CommandItem, CommandList } from "./CommandList";
+import { DATE_PRESETS } from "./DraftPicker";
 import { Avatar, LabelDot, PriorityIcon, StateIcon } from "./icons";
 
 const TITLES = {
@@ -15,6 +16,7 @@ const TITLES = {
   assignee: "指派给",
   labels: "设置标签",
   due: "设置截止日期",
+  start: "设置开始日期",
 };
 
 function addDays(n: number) {
@@ -123,51 +125,31 @@ export function PropertyPicker() {
         return list;
       }
       case "due":
+      case "start": {
+        const field = kind === "due" ? "due_date" : "start_date";
+        const set = (v: string | null) => done({ [field]: v });
         return [
-          {
-            id: "today",
-            label: "今天",
-            hint: addDays(0),
-            onSelect: () => done({ due_date: addDays(0) }),
-          },
-          {
-            id: "tomorrow",
-            label: "明天",
-            hint: addDays(1),
-            onSelect: () => done({ due_date: addDays(1) }),
-          },
-          {
-            id: "week",
-            label: "一周后",
-            hint: addDays(7),
-            onSelect: () => done({ due_date: addDays(7) }),
-          },
-          {
-            id: "twoweeks",
-            label: "两周后",
-            hint: addDays(14),
-            onSelect: () => done({ due_date: addDays(14) }),
-          },
-          {
-            id: "month",
-            label: "一个月后",
-            hint: addDays(30),
-            onSelect: () => done({ due_date: addDays(30) }),
-          },
+          ...DATE_PRESETS.map((p) => ({
+            id: p.id,
+            label: p.label,
+            hint: addDays(p.days),
+            onSelect: () => set(addDays(p.days)),
+          })),
           {
             id: "clear",
-            label: "清除截止日期",
+            label: kind === "due" ? "清除截止日期" : "清除开始日期",
             icon: <XCircle size={14} />,
-            onSelect: () => done({ due_date: null }),
+            onSelect: () => set(null),
           },
         ].map((x) => ({ icon: <CalendarDays size={14} />, ...x }));
+      }
     }
   })();
 
   if (!picker || !issue) return null;
   const project = projects.find((p) => p.id === issue.project_id);
   return (
-    <Modal open onClose={close} className="max-w-md">
+    <Modal open onClose={close} className="max-w-md" instant>
       <CommandList
         key={kind}
         items={items}

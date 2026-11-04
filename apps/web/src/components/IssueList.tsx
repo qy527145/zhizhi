@@ -25,6 +25,7 @@ const Row = memo(function Row({
   onOpen: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const flash = useUi((s) => s.flashId === issue.id);
   useEffect(() => {
     if (focused) ref.current?.scrollIntoView({ block: "nearest" });
   }, [focused]);
@@ -40,10 +41,12 @@ const Row = memo(function Row({
       onKeyDown={(e) => {
         if (e.key === "Enter") onOpen(issue.id);
       }}
+      onAnimationEnd={() => flash && useUi.getState().set({ flashId: null })}
       onMouseMove={() => !focused && useUi.getState().set({ focusedId: issue.id })}
       className={cn(
         "group flex h-10 cursor-pointer items-center gap-2 border-b border-zinc-100 pl-5 pr-4 transition-colors",
         focused ? "bg-zinc-100/80" : "hover:bg-zinc-50",
+        flash && "animate-flash",
       )}
     >
       <PriorityButton issue={issue} />

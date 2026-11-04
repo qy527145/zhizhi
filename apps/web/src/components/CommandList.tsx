@@ -118,7 +118,7 @@ export function CommandList({
                 onMouseMove={() => active !== idx && setActive(idx)}
                 onClick={it.onSelect}
                 className={cn(
-                  "flex h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-[13px] text-zinc-700",
+                  "flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] text-zinc-700",
                   idx === active && "bg-zinc-100 text-zinc-900",
                 )}
               >

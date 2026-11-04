@@ -171,10 +171,29 @@ async fn remove(
     Path(id): Path<String>,
 ) -> AppResult<StatusCode> {
     access::project(&s.db, &id, &user.id).await?;
+    // 任务级联删除时外键只会把附件的 issue_id 置空，所以要先显式删附件，否则记录和文件都会残留。
+    let keys: Vec<(String,)> = sqlx::query_as(
+        "SELECT storage_key FROM attachments
+         WHERE issue_id IN (SELECT id FROM issues WHERE project_id = ?)",
+    )
+    .bind(&id)
+    .fetch_all(&s.db)
+    .await?;
+    let mut tx = s.db.begin().await?;
+    sqlx::query(
+        "DELETE FROM attachments WHERE issue_id IN (SELECT id FROM issues WHERE project_id = ?)",
+    )
+    .bind(&id)
+    .execute(&mut *tx)
+    .await?;
     sqlx::query("DELETE FROM projects WHERE id = ?")
         .bind(&id)
-        .execute(&s.db)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
+    for (key,) in keys {
+        let _ = tokio::fs::remove_file(s.config.attachment_dir.join(key)).await;
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 

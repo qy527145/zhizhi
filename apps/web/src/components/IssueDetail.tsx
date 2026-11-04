@@ -1,6 +1,6 @@
-import type { Activity, Comment, Issue } from "@zhizhi/shared";
+import type { Activity, Attachment, Comment, Issue } from "@zhizhi/shared";
 import { Button, CloseButton, IconButton, Kbd } from "@zhizhi/ui/ui";
-import { ArrowUpRight, Link2, MessageSquare, Trash2 } from "lucide-react";
+import { ArrowUpRight, Link2, MessageSquare, Paperclip, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { api } from "@/lib/api";
@@ -10,8 +10,10 @@ import { useIssues } from "@/stores/issues";
 import { toast } from "@/stores/toast";
 import { useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
-import { AssigneeButton, DueButton, PriorityButton, StateButton } from "./IssueProps";
+import { AssigneeButton, DueButton, PriorityButton, StartButton, StateButton } from "./IssueProps";
 import { Avatar, LabelDot } from "./icons";
+import { AttachmentStrip, Markdown } from "./Markdown";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 const FIELD_LABEL: Record<string, string> = {
   title: "标题",
@@ -19,6 +21,7 @@ const FIELD_LABEL: Record<string, string> = {
   priority: "优先级",
   assignee_id: "负责人",
   due_date: "截止日期",
+  start_date: "开始日期",
   labels: "标签",
 };
 
@@ -57,6 +60,7 @@ function ActivityText({ a, issue }: { a: Activity; issue: Issue }) {
   if (a.field === "labels") return <>更新了标签</>;
   if (a.field === "assignee_id" && !a.new_value) return <>取消了指派</>;
   if (a.field === "due_date" && !a.new_value) return <>清除了截止日期</>;
+  if (a.field === "start_date" && !a.new_value) return <>清除了开始日期</>;
   return (
     <>
       将{FIELD_LABEL[a.field] ?? a.field}改为{" "}
@@ -122,8 +126,18 @@ export function IssueDetail({ issueId, mode }: { issueId: string; mode: "peek" |
           <DescriptionEditor
             key={`d-${issue.id}-${issue.description}`}
             issue={issue}
-            onSave={(description) => update(issue.id, { description })}
+            onSave={(description, attachment_ids) =>
+              update(issue.id, { description, attachment_ids })
+            }
           />
+          {issue.attachments.length > 0 && (
+            <div className="mt-5">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+                <Paperclip size={12} /> 附件 · {issue.attachments.length}
+              </div>
+              <AttachmentStrip items={issue.attachments} />
+            </div>
+          )}
           <Timeline issue={issue} members={members} />
         </div>
         <aside className="w-64 shrink-0 space-y-1 overflow-y-auto border-l border-zinc-100 px-3 py-4">
@@ -135,6 +149,9 @@ export function IssueDetail({ issueId, mode }: { issueId: string; mode: "peek" |
           </Prop>
           <Prop label="负责人" k="A">
             <AssigneeButton issue={issue} withLabel />
+          </Prop>
+          <Prop label="开始日期">
+            <StartButton issue={issue} />
           </Prop>
           <Prop label="截止日期" k="D">
             <DueButton issue={issue} withLabel />
@@ -173,12 +190,12 @@ export function IssueDetail({ issueId, mode }: { issueId: string; mode: "peek" |
   );
 }
 
-function Prop({ label, k, children }: { label: string; k: string; children: React.ReactNode }) {
+function Prop({ label, k, children }: { label: string; k?: string; children: React.ReactNode }) {
   return (
     <div className="group flex min-h-8 items-center">
       <span className="flex w-20 shrink-0 items-center gap-1 text-xs text-zinc-500">
         {label}
-        <Kbd className="hidden h-4 min-w-4 text-[10px] group-hover:inline-flex">{k}</Kbd>
+        {k && <Kbd className="hidden h-4 min-w-4 text-[10px] group-hover:inline-flex">{k}</Kbd>}
       </span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
@@ -231,39 +248,99 @@ function TitleEditor({ issue, onSave }: { issue: Issue; onSave: (t: string) => v
   );
 }
 
-function DescriptionEditor({ issue, onSave }: { issue: Issue; onSave: (d: string) => void }) {
+/**
+ * 描述：默认渲染 Markdown（图文混排），点击进入编辑；失焦或 ⌘↵ 保存。
+ * 新上传的图片随保存一起绑定到任务。
+ */
+function DescriptionEditor({
+  issue,
+  onSave,
+}: {
+  issue: Issue;
+  onSave: (d: string, attachmentIds: string[]) => void;
+}) {
+  const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(issue.description);
-  const ref = useRef<HTMLTextAreaElement>(null);
-  // value 决定内容高度，必须作为依赖触发重算。
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 见上
-  useEffect(() => {
-    const el = ref.current;
-    if (el) {
-      el.style.height = "0";
-      el.style.height = `${Math.max(el.scrollHeight, 96)}px`;
-    }
-  }, [value]);
+  const [fresh, setFresh] = useState<Attachment[]>([]);
+  const wrap = useRef<HTMLDivElement>(null);
+
+  const commit = () => {
+    if (value.includes("](uploading-")) return; // 等上传完再保存
+    setEditing(false);
+    const ids = fresh.filter((a) => value.includes(a.id)).map((a) => a.id);
+    if (value !== issue.description || ids.length) onSave(value, ids);
+    setFresh([]);
+  };
+
+  if (!editing) {
+    return (
+      // 整块可点击进入编辑；内部图片点击会冒泡到这里之前被灯箱拦截。
+      // biome-ignore lint/a11y/useSemanticElements: 内部含图片按钮，不能嵌套 <button>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button, a")) return;
+          setEditing(true);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") setEditing(true);
+        }}
+        className="group mt-3 -mx-2 cursor-text rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-50"
+      >
+        {issue.description.trim() ? (
+          <Markdown text={issue.description} />
+        ) : (
+          <span className="text-[13.5px] text-zinc-400">添加描述…支持 Markdown 与图片</span>
+        )}
+      </div>
+    );
+  }
   return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => value !== issue.description && onSave(value)}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.stopPropagation();
-          ref.current?.blur();
-        }
+    // onBlur 只用来侦测焦点离开整个编辑区（focusout 冒泡），不是交互入口。
+    // biome-ignore lint/a11y/noStaticElementInteractions: 见上
+    <div
+      ref={wrap}
+      className="mt-3 -mx-2 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-card"
+      onBlur={(e) => {
+        // 焦点仍在编辑器内部（如点工具栏按钮）时不保存。
+        if (!wrap.current?.contains(e.relatedTarget as Node)) commit();
       }}
-      placeholder="添加描述…"
-      className="mt-3 w-full resize-none overflow-hidden bg-transparent text-[13.5px] leading-relaxed text-zinc-700 outline-none placeholder:text-zinc-400"
-    />
+    >
+      <MarkdownEditor
+        value={value}
+        onChange={setValue}
+        autoFocus
+        attachments={[...issue.attachments, ...fresh].filter((a) => value.includes(a.id))}
+        onAttach={(a) => setFresh((xs) => [...xs, a])}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            setValue(issue.description);
+            setFresh([]);
+            setEditing(false);
+          }
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+        }}
+        minRows={5}
+      />
+      <div className="mt-1 flex justify-end gap-2 text-xs text-zinc-400">
+        <span>
+          <Kbd>Esc</Kbd> 放弃 · <Kbd>{modKey}</Kbd>
+          <Kbd>↵</Kbd> 保存
+        </span>
+      </div>
+    </div>
   );
 }
 
 function Timeline({ issue, members }: { issue: Issue; members: { id: string; name: string }[] }) {
   const { comments, setComments, activities } = useTimeline(issue);
   const [body, setBody] = useState("");
+  const [fresh, setFresh] = useState<Attachment[]>([]);
   const [busy, setBusy] = useState(false);
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? "未知成员";
 
@@ -276,9 +353,13 @@ function Timeline({ issue, members }: { issue: Issue; members: { id: string; nam
     if (!body.trim() || busy) return;
     setBusy(true);
     try {
-      const c = await api.createComment(issue.id, body);
+      const ids = fresh.filter((a) => body.includes(a.id)).map((a) => a.id);
+      const c = await api.createComment(issue.id, body, ids);
       setComments((cs) => [...cs, c]);
       setBody("");
+      setFresh([]);
+      // 评论里的图片也算任务附件，刷新任务让附件区同步。
+      if (ids.length) useIssues.getState().upsert([await api.issue(issue.id)]);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -307,17 +388,20 @@ function Timeline({ issue, members }: { issue: Issue; members: { id: string; nam
                 <span className="font-medium text-zinc-800">{name(it.c.author_id)}</span>
                 <span className="text-zinc-400">{relativeTime(it.c.created_at)}</span>
               </div>
-              <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-700">
-                {it.c.body}
-              </div>
+              <Markdown text={it.c.body} />
             </div>
           ),
         )}
       </div>
-      <div className="mt-4 rounded-lg border border-zinc-200 focus-within:border-zinc-300 focus-within:shadow-sm">
-        <textarea
+      <div className="mt-4 rounded-lg border border-zinc-200 px-3.5 pt-2.5 pb-2 transition-[border-color,box-shadow] duration-150 focus-within:border-zinc-300 focus-within:shadow-card">
+        <MarkdownEditor
+          compact
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={setBody}
+          attachments={[]}
+          onAttach={(a) => setFresh((xs) => [...xs, a])}
+          placeholder="写下评论…支持 Markdown，可粘贴图片"
+          minRows={2}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
               e.preventDefault();
@@ -325,11 +409,8 @@ function Timeline({ issue, members }: { issue: Issue; members: { id: string; nam
             }
             if (e.key === "Escape") (e.target as HTMLElement).blur();
           }}
-          placeholder="写下评论…"
-          rows={2}
-          className="block w-full resize-none bg-transparent px-3.5 pt-2.5 text-[13px] outline-none placeholder:text-zinc-400"
         />
-        <div className="flex items-center justify-end gap-2 px-2 pb-2">
+        <div className="-mt-6 flex items-center justify-end gap-2">
           <span className="text-xs text-zinc-400">{modKey} ↵ 发送</span>
           <Button variant="secondary" disabled={!body.trim() || busy} onClick={submit}>
             <MessageSquare size={13} /> 评论

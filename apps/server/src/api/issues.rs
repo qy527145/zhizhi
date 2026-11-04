@@ -625,6 +625,9 @@ async fn comments(
 #[derive(Deserialize)]
 struct CommentReq {
     body: String,
+    /// 评论里新上传的附件，同样绑定到任务上。
+    #[serde(default)]
+    attachment_ids: Vec<String>,
 }
 
 async fn create_comment(
@@ -633,7 +636,7 @@ async fn create_comment(
     Path(id): Path<String>,
     Json(req): Json<CommentReq>,
 ) -> AppResult<Json<Comment>> {
-    access::issue(&s.db, &id, &user.id).await?;
+    let (_, ws) = access::issue(&s.db, &id, &user.id).await?;
     let body = req.body.trim().to_owned();
     if body.is_empty() {
         return Err(AppError::BadRequest("评论内容不能为空".into()));
@@ -645,6 +648,16 @@ async fn create_comment(
         body,
         created_at: Utc::now(),
     };
+    let mut tx = s.db.begin().await?;
+    files::attach(
+        &mut tx,
+        &ws,
+        &c.issue_id,
+        &c.author_id,
+        &req.attachment_ids,
+        &c.body,
+    )
+    .await?;
     sqlx::query(
         "INSERT INTO comments (id, issue_id, author_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
     )
@@ -653,8 +666,9 @@ async fn create_comment(
     .bind(&c.author_id)
     .bind(&c.body)
     .bind(c.created_at)
-    .execute(&s.db)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(Json(c))
 }
 

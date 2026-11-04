@@ -137,7 +137,8 @@ export const api = {
   updateIssue: (id: string, b: IssuePatch) => patch<Issue>(`/issues/${id}`, b),
   deleteIssue: (id: string) => del(`/issues/${id}`),
   comments: (id: string) => get<Comment[]>(`/issues/${id}/comments`),
-  createComment: (id: string, body: string) => post<Comment>(`/issues/${id}/comments`, { body }),
+  createComment: (id: string, body: string, attachment_ids: string[] = []) =>
+    post<Comment>(`/issues/${id}/comments`, { body, attachment_ids }),
   activities: (id: string) => get<Activity[]>(`/issues/${id}/activities`),
 
   upload,

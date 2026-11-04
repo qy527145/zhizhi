@@ -153,7 +153,7 @@ export function CommandPalette() {
   })();
 
   return (
-    <Modal open={open} onClose={close} className="max-w-xl">
+    <Modal open={open} onClose={close} className="max-w-xl" instant>
       <CommandList
         items={items}
         placeholder="输入命令或搜索任务…"

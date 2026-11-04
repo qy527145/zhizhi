@@ -174,6 +174,55 @@ async fn list_filters_and_date_range() {
 }
 
 #[tokio::test]
+async fn comment_binds_images_and_project_delete_cleans_up() {
+    let c = Client::new().await;
+    let (tok, proj) = c.seed("a@x.com", "ws-a").await;
+    let (_, issue) = c
+        .json(
+            "POST",
+            &format!("/api/projects/{proj}/issues"),
+            Some(&tok),
+            Some(json!({ "title": "任务" })),
+        )
+        .await;
+    let issue_id = issue["id"].as_str().unwrap();
+    let (_, att) = c.upload("ws-a", &tok, "a.png", PNG).await;
+    let att_id = att["id"].as_str().unwrap();
+
+    // 引用了但没绑定：拒绝，且不留下评论。
+    let path = format!("/api/issues/{issue_id}/comments");
+    let body = format!("![图]({att_id})");
+    let (status, _) = c
+        .json("POST", &path, Some(&tok), Some(json!({ "body": body })))
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let (_, list) = c.json("GET", &path, Some(&tok), None).await;
+    assert_eq!(list.as_array().unwrap().len(), 0);
+
+    let (status, _) = c
+        .json(
+            "POST",
+            &path,
+            Some(&tok),
+            Some(json!({ "body": body, "attachment_ids": [att_id] })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, fresh) = c
+        .json("GET", &format!("/api/issues/{issue_id}"), Some(&tok), None)
+        .await;
+    assert_eq!(fresh["attachments"][0]["id"], att_id);
+
+    // 删除项目后附件记录一并清除，不能再下载。
+    let (status, _) = c
+        .json("DELETE", &format!("/api/projects/{proj}"), Some(&tok), None)
+        .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let (status, _) = c.raw(&format!("/api/files/{att_id}"), &tok).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn saved_views_are_private() {
     let c = Client::new().await;
     let (tok, proj) = c.seed("a@x.com", "ws-a").await;

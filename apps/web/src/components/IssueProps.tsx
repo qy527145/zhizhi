@@ -1,5 +1,5 @@
 import type { Issue } from "@zhizhi/shared";
-import { CalendarDays, UserRound } from "lucide-react";
+import { CalendarClock, CalendarDays, UserRound } from "lucide-react";
 import { memo } from "react";
 import { priorityMeta } from "@/lib/constants";
 import { cn, formatDue, isOverdue } from "@/lib/utils";
@@ -101,6 +101,22 @@ export function DueButton({ issue, withLabel }: { issue: Issue; withLabel?: bool
         )}
       >
         {issue.due_date ? formatDue(issue.due_date) : "无截止日期"}
+      </span>
+    </button>
+  );
+}
+
+export function StartButton({ issue }: { issue: Issue }) {
+  return (
+    <button
+      type="button"
+      className={propBtn}
+      onClick={openPicker("start", issue.id)}
+      title="开始日期"
+    >
+      <CalendarClock size={12} />
+      <span className={issue.start_date ? "text-zinc-700" : "text-zinc-400"}>
+        {issue.start_date ? formatDue(issue.start_date) : "无开始日期"}
       </span>
     </button>
   );

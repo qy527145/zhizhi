@@ -8,18 +8,80 @@
     "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
     "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
-  --color-accent: #3f63f0;
-  --color-accent-soft: #eef1fe;
-  --shadow-pop: 0 0 0 1px rgb(0 0 0 / 0.06), 0 8px 24px -6px rgb(0 0 0 / 0.16);
-  --animate-in: pop-in 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* 墨蓝：比通用蓝更沉，和中文的「知」相称，也不与优先级的红橙黄撞色。 */
+  --color-accent: #3f5bd9;
+  --color-accent-soft: #eef1fd;
+  --color-accent-ink: #2a3f9e;
+  --shadow-pop: 0 0 0 1px rgb(15 23 42 / 0.06), 0 12px 32px -8px rgb(15 23 42 / 0.22);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 0 0 1px rgb(15 23 42 / 0.06);
+  --shadow-lift: 0 0 0 1px rgb(15 23 42 / 0.08), 0 16px 32px -12px rgb(15 23 42 / 0.28);
+
+  /* 动效曲线：进出场用强 ease-out，屏上位移用 ease-in-out，不用 ease-in。 */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-in: pop-in 180ms var(--ease-out);
+  --animate-fade: fade-in 160ms var(--ease-out);
+  --animate-drawer: drawer-in 240ms var(--ease-drawer);
+  --animate-rise: rise-in 220ms var(--ease-out) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-flash: flash 1.2s var(--ease-out);
+
   @keyframes pop-in {
     from {
       opacity: 0;
-      transform: translateY(-4px) scale(0.98);
+      transform: translateY(-4px) scale(0.97);
     }
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes drawer-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+  /* 新建任务落地时的一次性高亮，只动背景色，面积是单行，开销可控。 */
+  @keyframes flash {
+    0%,
+    30% {
+      background-color: var(--color-accent-soft);
+    }
+    100% {
+      background-color: transparent;
     }
   }
 }
@@ -46,4 +108,133 @@ body {
 /* 输入类控件由各自样式表达焦点，按钮等可交互元素用柔和的焦点环 */
 :where(button, a, [tabindex]):focus-visible {
   @apply ring-2 ring-accent/40;
+}
+
+/* 按压反馈：任何按钮按下都轻微收缩，让界面「听见」了点击。 */
+.press {
+  transition: transform 140ms var(--ease-out);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* 骨架屏：加载附件或数据时占位，避免布局跳动。 */
+.skeleton {
+  background: linear-gradient(90deg, #f4f4f5 25%, #e9e9ec 37%, #f4f4f5 63%);
+  background-size: 400% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* 列表首次进入的短暂错峰，只用于首屏，不阻塞交互。 */
+.stagger > * {
+  animation: var(--animate-rise);
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(n + 6) {
+  animation-delay: 150ms;
+}
+
+/* Markdown 正文排版。 */
+.prose-zz {
+  @apply text-[13.5px] leading-relaxed text-zinc-700;
+}
+.prose-zz > * + * {
+  @apply mt-2.5;
+}
+.prose-zz h1 {
+  @apply text-lg font-semibold text-zinc-900;
+}
+.prose-zz h2 {
+  @apply text-base font-semibold text-zinc-900;
+}
+.prose-zz h3 {
+  @apply text-[14px] font-semibold text-zinc-900;
+}
+.prose-zz a {
+  @apply text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent;
+}
+.prose-zz ul {
+  @apply list-disc pl-5;
+}
+.prose-zz ol {
+  @apply list-decimal pl-5;
+}
+.prose-zz li + li {
+  @apply mt-1;
+}
+.prose-zz li > input[type="checkbox"] {
+  @apply mr-1.5 align-middle accent-accent;
+}
+.prose-zz blockquote {
+  @apply border-l-2 border-zinc-200 pl-3 text-zinc-500;
+}
+.prose-zz code {
+  @apply rounded bg-zinc-100 px-1 py-0.5 font-mono text-[12px] text-zinc-800;
+}
+.prose-zz pre {
+  @apply overflow-x-auto rounded-lg bg-zinc-950 p-3 text-[12px] leading-relaxed text-zinc-100;
+}
+.prose-zz pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+.prose-zz table {
+  @apply w-full border-collapse text-[12.5px];
+}
+.prose-zz th,
+.prose-zz td {
+  @apply border border-zinc-200 px-2 py-1 text-left;
+}
+.prose-zz th {
+  @apply bg-zinc-50 font-medium;
+}
+.prose-zz hr {
+  @apply border-zinc-200;
+}
+
+/* 悬停动效只在真正有指针悬停能力的设备上生效，避免触屏点击误触发。 */
+@media (hover: hover) and (pointer: fine) {
+  .lift {
+    transition:
+      transform 180ms var(--ease-out),
+      box-shadow 180ms var(--ease-out);
+  }
+  .lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+/* 减弱动效：去掉位移与缩放，只保留帮助理解的透明度变化。
+   这里必须用 !important：通配选择器的优先级为 0，否则压不过各组件上的工具类动画。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: 见上 */
+    animation-duration: 120ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 见上 */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 见上 */
+    transition-duration: 0ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 见上 */
+    scroll-behavior: auto !important;
+  }
+  .press:active,
+  .lift:hover {
+    transform: none;
+  }
+  .skeleton {
+    animation: none;
+  }
 }
