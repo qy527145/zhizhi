@@ -63,16 +63,18 @@ const Card = memo(function Card({
       onMouseMove={() => !focused && useUi.getState().set({ focusedId: issue.id })}
       className={cn(
         "lift cursor-pointer overflow-hidden rounded-lg bg-white p-3 shadow-card",
-        focused && "ring-1 ring-zinc-300",
+        focused && "ring-1 ring-accent/40",
         dragging && "opacity-40",
         flash && "animate-flash",
       )}
     >
       <Cover issue={issue} />
-      <div className="font-mono text-[11px] text-zinc-400">
+      <div className="font-mono text-[11px] tracking-tight text-zinc-400">
         {project?.identifier}-{issue.seq}
       </div>
-      <div className="mt-1 line-clamp-2 text-[13px] leading-snug text-zinc-800">{issue.title}</div>
+      <div className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug text-zinc-800">
+        {issue.title}
+      </div>
       <div className="mt-2 flex flex-wrap items-center gap-1">
         <PriorityButton issue={issue} />
         <LabelChips issue={issue} max={2} />
@@ -186,14 +188,22 @@ export function IssueBoard({
           }}
           onDrop={(e) => onDrop(e, g)}
           className={cn(
-            "flex w-72 shrink-0 flex-col rounded-xl bg-zinc-100/70 transition-colors duration-150",
+            "flex w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-zinc-100/70 transition-colors duration-150",
             over?.key === g.key && "bg-accent-soft",
           )}
         >
+          {/* 列头的状态色条：颜色来自状态本身，换分组方式时退回中性灰。 */}
+          <span
+            aria-hidden
+            className="h-[3px] shrink-0"
+            style={{ backgroundColor: g.state?.color ?? g.labelColor ?? "#d4d4d8" }}
+          />
           <div className="flex h-10 items-center gap-2 px-3 text-[13px] font-medium text-zinc-700">
             <GroupIcon group={g} />
             <span className="truncate">{g.title}</span>
-            <span className="font-normal text-zinc-400">{g.issues.length}</span>
+            <span className="rounded-full bg-white/70 px-1.5 font-mono text-[11px] font-normal tabular-nums text-zinc-500">
+              {g.issues.length}
+            </span>
             <span className="flex-1" />
             {onQuickCreate && g.state && (
               <button
@@ -207,6 +217,11 @@ export function IssueBoard({
             )}
           </div>
           <div className="min-h-16 flex-1 overflow-y-auto px-2 pb-2">
+            {g.issues.length === 0 && over?.key !== g.key && (
+              <div className="mt-1 grid h-20 place-items-center rounded-lg border border-dashed border-zinc-300/80 text-[12px] text-zinc-400">
+                拖动任务到这里
+              </div>
+            )}
             {g.issues.map((i, idx) => (
               <div key={i.id} data-flip={i.id} className="relative pb-2">
                 {manual && over?.key === g.key && over.idx === idx && <DropLine />}
