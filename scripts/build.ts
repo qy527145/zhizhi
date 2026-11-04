@@ -113,7 +113,10 @@ await copyFile(built, destination);
 //    一起剥坏（macOS 上表现为链接期 "mis-aligned LINKEDIT string pool"）。
 if (!exe) {
   const stripFlag = host === "mac" ? "-S" : "--strip-all";
-  Bun.spawnSync({ cmd: ["strip", stripFlag, destination], stdio: ["inherit", "inherit", "ignore"] });
+  Bun.spawnSync({
+    cmd: ["strip", stripFlag, destination],
+    stdio: ["inherit", "inherit", "ignore"],
+  });
 }
 
 const sizeMb = ((await Bun.file(destination).size) / 1024 / 1024).toFixed(1);

@@ -6,11 +6,11 @@
 
 ## 技术栈
 
-| 层   | 选型                                                                              |
-| ---- | --------------------------------------------------------------------------------- |
-| 后端 | Rust · Axum 0.8 · SQLx（SQLite，WAL）· JWT（HS256）· Argon2                       |
-| 前端 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Zustand · Lucide React · Bun     |
-| 工程 | Cargo workspace + Bun workspaces + Turbo · Biome · rust-embed（单二进制）          |
+| 层   | 选型                                                                           |
+| ---- | ------------------------------------------------------------------------------ |
+| 后端 | Rust · Axum 0.8 · SQLx（SQLite，WAL）· JWT（HS256）· Argon2                    |
+| 前端 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Zustand · Lucide React · Bun |
+| 工程 | Cargo workspace + Bun workspaces + Turbo · Biome · rust-embed（单二进制）      |
 
 ## 快速开始
 
@@ -109,14 +109,14 @@ PATCH 任务时，`assignee_id` / `due_date` 传 `null` 表示清空，不传表
 
 所有环境变量集中在根目录 `.env`，`.env.example` 是文档。
 
-| 变量           | 默认        | 说明                                  |
-| -------------- | ----------- | ------------------------------------- |
-| `HOST`         | `127.0.0.1` | 后端监听地址，容器内改为 `0.0.0.0`    |
-| `PORT`         | `8080`      | 后端端口，也是生产 HTTP 端口          |
-| `WEB_PORT`     | `5173`      | Vite 开发服务器端口                   |
-| `RUST_LOG`     | `info`      | tracing 过滤器                        |
-| `DATABASE_URL` | `sqlite://zhizhi.db` | SQLite 位置，相对路径基于启动目录 |
-| `JWT_SECRET`   | 开发默认值  | 生产环境必须覆盖，建议 32 字节以上随机串 |
+| 变量           | 默认                 | 说明                                     |
+| -------------- | -------------------- | ---------------------------------------- |
+| `HOST`         | `127.0.0.1`          | 后端监听地址，容器内改为 `0.0.0.0`       |
+| `PORT`         | `8080`               | 后端端口，也是生产 HTTP 端口             |
+| `WEB_PORT`     | `5173`               | Vite 开发服务器端口                      |
+| `RUST_LOG`     | `info`               | tracing 过滤器                           |
+| `DATABASE_URL` | `sqlite://zhizhi.db` | SQLite 位置，相对路径基于启动目录        |
+| `JWT_SECRET`   | 开发默认值           | 生产环境必须覆盖，建议 32 字节以上随机串 |
 
 ## 用模板创建新项目
 

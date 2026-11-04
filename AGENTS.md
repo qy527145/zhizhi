@@ -10,21 +10,21 @@ Bun 与 Turbo 负责前端和任务编排。
 
 ## 目录
 
-| 路径                        | 职责                                                                              |
-| --------------------------- | --------------------------------------------------------------------------------- |
-| `apps/server/`              | Rust / axum + SQLx(SQLite)。唯一二进制入口 `src/main.rs`                          |
-| `apps/server/src/api/`      | 按领域分模块，每个模块导出 `router() -> Router<AppState>`，在 `api/mod.rs` merge   |
-| `apps/server/src/api/access.rs` | 基于工作区成员关系的统一访问控制                                              |
-| `apps/server/src/app.rs`    | 根 Router：挂 `/api`、SPA fallback、中间件                                        |
-| `apps/server/src/config.rs` | **唯一**读取环境变量的地方                                                        |
-| `apps/server/src/session.rs`| JWT 签发校验、密码哈希、`AuthUser` 提取器                                         |
-| `apps/server/src/error.rs`  | `AppError` → 统一 JSON 错误响应                                                   |
-| `apps/server/migrations/`   | SQL 迁移，启动时自动执行                                                          |
-| `apps/web/`                 | React 19 + Vite 8 + Tailwind v4                                                   |
-| `packages/ui/`              | 共享组件（源码级消费，无需 build）                                                |
-| `packages/shared/`          | 与 Rust 对齐的 TS 类型契约                                                        |
-| `scripts/build.ts`          | 单二进制构建编排                                                                  |
-| `.env`                      | 非敏感默认配置，前后端共用                                                        |
+| 路径                            | 职责                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| `apps/server/`                  | Rust / axum + SQLx(SQLite)。唯一二进制入口 `src/main.rs`                         |
+| `apps/server/src/api/`          | 按领域分模块，每个模块导出 `router() -> Router<AppState>`，在 `api/mod.rs` merge |
+| `apps/server/src/api/access.rs` | 基于工作区成员关系的统一访问控制                                                 |
+| `apps/server/src/app.rs`        | 根 Router：挂 `/api`、SPA fallback、中间件                                       |
+| `apps/server/src/config.rs`     | **唯一**读取环境变量的地方                                                       |
+| `apps/server/src/session.rs`    | JWT 签发校验、密码哈希、`AuthUser` 提取器                                        |
+| `apps/server/src/error.rs`      | `AppError` → 统一 JSON 错误响应                                                  |
+| `apps/server/migrations/`       | SQL 迁移，启动时自动执行                                                         |
+| `apps/web/`                     | React 19 + Vite 8 + Tailwind v4                                                  |
+| `packages/ui/`                  | 共享组件（源码级消费，无需 build）                                               |
+| `packages/shared/`              | 与 Rust 对齐的 TS 类型契约                                                       |
+| `scripts/build.ts`              | 单二进制构建编排                                                                 |
+| `.env`                          | 非敏感默认配置，前后端共用                                                       |
 
 ## 命令
 
