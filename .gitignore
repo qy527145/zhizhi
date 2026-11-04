@@ -11,6 +11,14 @@ node_modules/
 /apps/web/dist/*
 !/apps/web/dist/.gitkeep
 
+# 运行期数据：附件、CLI 发布产物、SQLite。
+# data/releases 必须存在（服务端从这里下发 /dl/*），所以只忽略内容、保留目录占位。
+data/*
+!/data/releases/
+data/releases/*
+!/data/releases/.gitkeep
+/apps/server/data/
+
 # SQLite（运行期产生，迁移文件在 apps/server/migrations）
 *.db
 *.db-shm
