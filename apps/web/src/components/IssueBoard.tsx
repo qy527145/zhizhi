@@ -74,43 +74,45 @@ const Card = memo(function Card({
       )}
     >
       <Cover issue={issue} />
-      {/* 状态点 + 编号：一行里先说「在哪」，再读标题。 */}
+      {/* 首行只说「在哪」：状态点 + 编号在左，状态胶囊在右，字号压到最小。 */}
       <div className="flex items-center gap-1.5">
         {state && (
           <span
-            className="size-1.5 shrink-0 rounded-full"
+            className="size-[5px] shrink-0 rounded-full ring-2 ring-white/0"
             style={{ background: state.color }}
             aria-hidden
           />
         )}
-        <span className="font-mono text-[11px] tracking-tight text-zinc-400">
+        <span className="font-mono text-[10.5px] uppercase tracking-wide text-zinc-400">
           {project?.identifier}-{issue.seq}
         </span>
         <span className="flex-1" />
         {state && tone && (
           <span
-            className="shrink-0 rounded px-1.5 py-px text-[10px] text-zinc-600"
+            className="shrink-0 rounded px-1.5 py-px text-[10px] font-medium"
             style={{ background: tone.bg, color: tone.fg }}
           >
             {state.name}
           </span>
         )}
       </div>
-      <div className="mt-1 line-clamp-2 text-[13px] font-medium leading-snug text-zinc-800">
+      {/* 标题是卡片的主角：比元信息大一号、更深、行距收紧，允许三行。 */}
+      <div className="mt-1.5 line-clamp-3 text-[13.5px] font-medium leading-[1.45] text-zinc-900">
         {issue.title}
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1">
-        <PriorityButton issue={issue} />
-        <LabelChips issue={issue} max={2} />
-        <DueButton issue={issue} />
+      {/* 元信息一行放得下就一行，放不下换行；一律 11px，不跟标题抢。 */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-zinc-500">
+        <PriorityButton issue={issue} dense />
+        <LabelChips issue={issue} max={2} dense />
+        <DueButton issue={issue} dense />
         {issue.attachments.length > 0 && (
-          <span className="inline-flex items-center gap-0.5 px-1 text-xs text-zinc-400">
-            <Paperclip size={11} /> {issue.attachments.length}
+          <span className="inline-flex items-center gap-0.5 text-zinc-400">
+            <Paperclip size={10} /> {issue.attachments.length}
           </span>
         )}
         {issue.comment_count > 0 && (
-          <span className="inline-flex items-center gap-0.5 px-1 text-xs text-zinc-400">
-            <MessageSquare size={11} /> {issue.comment_count}
+          <span className="inline-flex items-center gap-0.5 text-zinc-400">
+            <MessageSquare size={10} /> {issue.comment_count}
           </span>
         )}
         <span className="flex-1" />

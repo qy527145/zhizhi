@@ -13,15 +13,21 @@ const openPicker = (kind: PickerKind, issueId: string) => (e: React.MouseEvent) 
   useUi.getState().set({ picker: { kind, issueId } });
 };
 
+// 看板卡片上的属性按钮比列表里小一号：卡片的元信息行要能缩成一行，
+// 而列表里的行有整行高度可以撑。dense 只改高度和字号，不改语义。
 const propBtn =
-  "inline-flex h-6 items-center gap-1 rounded-md px-1 text-xs text-zinc-500 transition hover:bg-zinc-200/70";
+  "inline-flex items-center gap-1 rounded-md text-xs text-zinc-500 transition hover:bg-zinc-200/60";
+
+const sizeOf = (dense?: boolean) => (dense ? "h-4.5 px-0.5 text-[11px]" : "h-6 px-1");
 
 export const StateButton = memo(function StateButton({
   issue,
   withLabel,
+  dense,
 }: {
   issue: Issue;
   withLabel?: boolean;
+  dense?: boolean;
 }) {
   const st = useIssues((s) =>
     s.meta[issue.project_id]?.states.find((x) => x.id === issue.state_id),
@@ -30,25 +36,33 @@ export const StateButton = memo(function StateButton({
   return (
     <button
       type="button"
-      className={propBtn}
+      className={cn(propBtn, sizeOf(dense))}
       onClick={openPicker("state", issue.id)}
       title={`状态：${st.name}`}
     >
-      <StateIcon group={st.group} color={st.color} />
+      <StateIcon group={st.group} color={st.color} size={dense ? 12 : 14} />
       {withLabel && <span className="text-zinc-700">{st.name}</span>}
     </button>
   );
 });
 
-export function PriorityButton({ issue, withLabel }: { issue: Issue; withLabel?: boolean }) {
+export function PriorityButton({
+  issue,
+  withLabel,
+  dense,
+}: {
+  issue: Issue;
+  withLabel?: boolean;
+  dense?: boolean;
+}) {
   return (
     <button
       type="button"
-      className={propBtn}
+      className={cn(propBtn, sizeOf(dense))}
       onClick={openPicker("priority", issue.id)}
       title={`优先级：${priorityMeta(issue.priority).label}`}
     >
-      <PriorityIcon priority={issue.priority} />
+      <PriorityIcon priority={issue.priority} size={dense ? 12 : 14} />
       {withLabel && (
         <span className="text-zinc-700">
           {issue.priority === "none" ? "无优先级" : priorityMeta(issue.priority).label}
@@ -58,16 +72,28 @@ export function PriorityButton({ issue, withLabel }: { issue: Issue; withLabel?:
   );
 }
 
-export function AssigneeButton({ issue, withLabel }: { issue: Issue; withLabel?: boolean }) {
+export function AssigneeButton({
+  issue,
+  withLabel,
+  dense,
+}: {
+  issue: Issue;
+  withLabel?: boolean;
+  dense?: boolean;
+}) {
   const m = useWorkspace((s) => s.members.find((x) => x.id === issue.assignee_id));
   return (
     <button
       type="button"
-      className={propBtn}
+      className={cn(propBtn, sizeOf(dense))}
       onClick={openPicker("assignee", issue.id)}
       title={m ? `负责人：${m.name}` : "未指派"}
     >
-      {m ? <Avatar name={m.name} size={18} /> : <UserRound size={14} className="text-zinc-400" />}
+      {m ? (
+        <Avatar name={m.name} size={dense ? 16 : 18} />
+      ) : (
+        <UserRound size={dense ? 12 : 14} className="text-zinc-400" />
+      )}
       {withLabel && (
         <span className={m ? "text-zinc-700" : "text-zinc-400"}>{m?.name ?? "未指派"}</span>
       )}
@@ -75,7 +101,15 @@ export function AssigneeButton({ issue, withLabel }: { issue: Issue; withLabel?:
   );
 }
 
-export function DueButton({ issue, withLabel }: { issue: Issue; withLabel?: boolean }) {
+export function DueButton({
+  issue,
+  withLabel,
+  dense,
+}: {
+  issue: Issue;
+  withLabel?: boolean;
+  dense?: boolean;
+}) {
   const st = useIssues((s) =>
     s.meta[issue.project_id]?.states.find((x) => x.id === issue.state_id),
   );
@@ -87,13 +121,15 @@ export function DueButton({ issue, withLabel }: { issue: Issue; withLabel?: bool
       type="button"
       className={cn(
         propBtn,
-        "border border-zinc-200 px-1.5",
+        sizeOf(dense),
+        "border border-zinc-200",
+        dense ? "px-1" : "px-1.5",
         overdue && "border-red-200 text-red-600",
         withLabel && "border-0 px-1",
       )}
       onClick={openPicker("due", issue.id)}
     >
-      <CalendarDays size={12} />
+      <CalendarDays size={dense ? 10 : 12} />
       <span
         className={cn(
           withLabel && !issue.due_date && "text-zinc-400",
@@ -122,7 +158,15 @@ export function StartButton({ issue }: { issue: Issue }) {
   );
 }
 
-export function LabelChips({ issue, max = 3 }: { issue: Issue; max?: number }) {
+export function LabelChips({
+  issue,
+  max = 3,
+  dense,
+}: {
+  issue: Issue;
+  max?: number;
+  dense?: boolean;
+}) {
   const labels = useIssues((s) => s.meta[issue.project_id]?.labels);
   if (!labels || issue.label_ids.length === 0) return null;
   const list = issue.label_ids.map((id) => labels.find((l) => l.id === id)).filter((l) => !!l);
@@ -135,7 +179,10 @@ export function LabelChips({ issue, max = 3 }: { issue: Issue; max?: number }) {
       {list.slice(0, max).map((l) => (
         <span
           key={l.id}
-          className="inline-flex h-6 items-center gap-1.5 rounded-full border border-zinc-200 px-2 text-xs text-zinc-600"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border border-zinc-200 text-[11px] text-zinc-600",
+            dense ? "h-4.5 px-1.5" : "h-6 px-2",
+          )}
         >
           <LabelDot color={l.color} />
           {l.name}
