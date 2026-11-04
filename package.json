@@ -20,6 +20,8 @@
     "lint": "biome check .",
     "fmt": "biome check --write . && cargo fmt --all",
     "smoke": "./scripts/smoke.sh",
+    "cli": "cargo run -q -p zhizhi-cli --bin zhizhi --",
+    "skill:install": "cargo run -q -p zhizhi-cli --bin zhizhi -- skill install",
     "clean": "bun run scripts/clean.ts"
   },
   "devDependencies": {

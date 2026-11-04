@@ -1,0 +1,7 @@
+{
+  "name": "@zhizhi/cli",
+  "private": true,
+  "scripts": {
+    "test": "cargo test -p zhizhi-cli"
+  }
+}

@@ -247,3 +247,57 @@ async fn saved_views_are_private() {
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
+
+#[tokio::test]
+async fn lookup_issue_by_key() {
+    let c = Client::new().await;
+    let (tok, proj) = c.seed("a@x.com", "ws-a").await;
+    c.json(
+        "POST",
+        &format!("/api/projects/{proj}/issues"),
+        Some(&tok),
+        Some(json!({ "title": "第一个" })),
+    )
+    .await;
+    let (status, issue) = c
+        .json(
+            "GET",
+            "/api/workspaces/ws-a/issues/core-1",
+            Some(&tok),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(issue["title"], "第一个");
+
+    let (status, _) = c
+        .json(
+            "GET",
+            "/api/workspaces/ws-a/issues/CORE-9",
+            Some(&tok),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, _) = c
+        .json(
+            "GET",
+            "/api/workspaces/ws-a/issues/nonsense",
+            Some(&tok),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    // 别的工作区的人用编号也拿不到。
+    let (other, _) = c.seed("b@x.com", "ws-b").await;
+    let (status, _) = c
+        .json(
+            "GET",
+            "/api/workspaces/ws-a/issues/CORE-1",
+            Some(&other),
+            None,
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}

@@ -21,6 +21,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/projects/{id}/issues", get(list).post(create))
         .route("/workspaces/{slug}/my-issues", get(my_issues))
+        .route("/workspaces/{slug}/issues/{key}", get(by_key))
         .route("/issues/{id}", get(detail).patch(update).delete(remove))
         .route("/issues/{id}/comments", get(comments).post(create_comment))
         .route("/issues/{id}/activities", get(activities))
@@ -212,6 +213,37 @@ async fn list(
     Ok(Json(rows))
 }
 
+/// 把 `CORE-12` 拆成项目标识和序号；标识大小写不敏感。
+fn parse_key(key: &str) -> Option<(String, i64)> {
+    let (ident, seq) = key.trim().rsplit_once('-')?;
+    let seq = seq.parse().ok()?;
+    let valid = !ident.is_empty() && ident.chars().all(|c| c.is_ascii_alphanumeric());
+    valid.then(|| (ident.to_uppercase(), seq))
+}
+
+/// 按任务编号取任务：命令行和 Agent 只认识 `CORE-12` 这种编号，不认识内部 id。
+async fn by_key(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path((slug, key)): Path<(String, String)>,
+) -> AppResult<Json<Issue>> {
+    let ws = access::workspace_by_slug(&s.db, &slug, &user.id).await?;
+    let (ident, seq) = parse_key(&key).ok_or_else(|| {
+        AppError::BadRequest("任务编号格式应为「项目标识-序号」，如 CORE-12".into())
+    })?;
+    let row: Option<(String,)> = sqlx::query_as(
+        "SELECT i.id FROM issues i JOIN projects p ON p.id = i.project_id
+         WHERE p.workspace_id = ? AND p.identifier = ? AND i.seq = ?",
+    )
+    .bind(ws)
+    .bind(ident)
+    .bind(seq)
+    .fetch_optional(&s.db)
+    .await?;
+    let (id,) = row.ok_or(AppError::NotFound("任务"))?;
+    Ok(Json(fetch(&s.db, &id).await?))
+}
+
 async fn my_issues(
     State(s): State<AppState>,
     user: AuthUser,
@@ -228,6 +260,20 @@ async fn my_issues(
     .await?;
     attach_labels(&s.db, &mut rows).await?;
     Ok(Json(rows))
+}
+
+#[cfg(test)]
+mod key_tests {
+    use super::parse_key;
+
+    #[test]
+    fn parses_issue_keys() {
+        assert_eq!(parse_key("core-12"), Some(("CORE".into(), 12)));
+        assert_eq!(parse_key(" APP2-3 "), Some(("APP2".into(), 3)));
+        assert_eq!(parse_key("CORE"), None);
+        assert_eq!(parse_key("-3"), None);
+        assert_eq!(parse_key("CO RE-3"), None);
+    }
 }
 
 #[derive(Deserialize)]

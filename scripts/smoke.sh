@@ -42,5 +42,26 @@ req GET /issues/$I >/dev/null; expect 403 越权访问
 TOKEN=$OWNER
 req POST /workspaces/zz/members '{"email":"b@x.com"}' >/dev/null; expect 200 邀请成员
 req DELETE /issues/$I >/dev/null; expect 204 删除任务
+# 附件：上传 → 带图建任务 → 下载内容一致
+PNG=/tmp/zhizhi-smoke.png
+printf '\211PNG\r\n\032\n' > "$PNG"; head -c 64 /dev/urandom >> "$PNG"
+ATT=$(curl -s -X POST -H "Authorization: Bearer $OWNER" -F "file=@$PNG" "$B/workspaces/zz/files" | field '["id"]')
+[[ -n "$ATT" ]] || { echo "FAIL: 上传附件"; exit 1; }; echo "ok  上传附件"
+I2=$(req POST /projects/$P/issues "{\"title\":\"带图\",\"description\":\"![图]($ATT)\",\"attachment_ids\":[\"$ATT\"]}" | field '["id"]'); expect 200 创建带图任务
+req GET /files/nope >/dev/null; expect 404 附件不存在
+TOKEN=$OWNER
+# 新上传、尚未绑定到任何任务的附件，不能在评论里被引用
+ATT2=$(curl -s -X POST -H "Authorization: Bearer $OWNER" -F "file=@$PNG" "$B/workspaces/zz/files" | field '["id"]')
+req POST /issues/$I2/comments "{\"body\":\"![图]($ATT2)\"}" >/dev/null; expect 400 评论引用未绑定附件
+req GET /workspaces/zz/issues/core-3 >/dev/null; expect 200 按编号查任务
+
+# 个人访问令牌：创建后可用，但不能管理令牌，吊销后立即失效
+PAT=$(req POST /tokens '{"name":"smoke"}' | field '["token"]'); expect 200 创建访问令牌
+TOKEN=$PAT; req GET /auth/me >/dev/null; expect 200 令牌可访问
+req GET /tokens >/dev/null; expect 403 令牌不能管理令牌
+TOKEN=$OWNER; TID=$(req GET /tokens | field '[0]["id"]')
+req DELETE /tokens/$TID >/dev/null; expect 204 吊销令牌
+TOKEN=$PAT; req GET /auth/me >/dev/null; expect 401 吊销后失效
+
 TOKEN=""; req GET /auth/me >/dev/null; expect 401 未登录
 echo "全部通过"

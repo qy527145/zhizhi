@@ -9,6 +9,7 @@
 | 层   | 选型                                                                           |
 | ---- | ------------------------------------------------------------------------------ |
 | 后端 | Rust · Axum 0.8 · SQLx（SQLite，WAL）· JWT（HS256）· Argon2                    |
+| CLI  | Rust · clap · reqwest，配套 Claude Code Skill（编译期打进二进制）              |
 | 前端 | React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Zustand · Lucide React · Bun |
 | 工程 | Cargo workspace + Bun workspaces + Turbo · Biome · rust-embed（单二进制）      |
 
@@ -48,6 +49,25 @@ bun run build:linux
 `cargo-zigbuild` 需要额外安装：`cargo install cargo-zigbuild`，并确保 `zig` 在 PATH 中。
 需要三平台同时出包时用 `.github/workflows/ci.yml`（打 tag 触发）。
 
+## 命令行与 Agent
+
+`zhizhi` 命令行让人和 Agent 在终端里管理任务；Skill 文件编译进二进制，版本始终一致。
+
+```bash
+bun run cli -- --help                 # 用源码运行，例如：
+bun run cli -- login --url http://127.0.0.1:8080 --token zhz_xxx --workspace my-team
+bun run cli -- issue list --json
+bun run cli -- issue get CORE-12 --download --json
+bun run skill:install                 # 安装 Skill 到 ~/.claude/skills/zhizhi
+```
+
+令牌在 Web「设置 → 访问令牌」创建（`zhz_` 前缀，只在创建时显示一次）。
+配置优先级：命令行参数 > 环境变量（`ZHIZHI_URL` / `ZHIZHI_TOKEN` / `ZHIZHI_WORKSPACE` /
+`ZHIZHI_PROJECT`）> 仓库根的 `.zhizhi.toml`（只放地址、工作区和默认项目）> 当前 profile。
+
+退出码：0 成功 / 1 通用 / 2 未认证 / 3 不存在 / 4 冲突 / 5 网络或服务端 / 6 参数 / 7 无权限；
+错误以 JSON 写到 stderr。完整命令见 [apps/cli/skill/references/cli.md](apps/cli/skill/references/cli.md)。
+
 ## 键盘快捷键
 
 | 按键      | 作用       | 按键  | 作用       |
@@ -68,6 +88,7 @@ bun run build:linux
 ## 目录结构
 
 ```
+apps/cli/            zhizhi 命令行；skill/ 是编译期打进二进制的 Agent Skill
 apps/server/         axum + SQLx
   migrations/        SQL 迁移（启动时自动执行）
   src/api/           REST API：health / auth / workspaces / projects / issues
@@ -99,6 +120,7 @@ GET    /workspaces/{slug}/projects         POST /workspaces/{slug}/projects
 GET|PATCH|DELETE /projects/{id}
 GET|POST /projects/{id}/states             GET|POST /projects/{id}/labels   DELETE /labels/{id}
 GET|POST /projects/{id}/issues             GET /workspaces/{slug}/my-issues
+GET /workspaces/{slug}/issues/{key}        按编号（CORE-12）取任务
 GET|PATCH|DELETE /issues/{id}
 GET|POST /issues/{id}/comments             GET /issues/{id}/activities
 POST   /workspaces/{slug}/files            GET /files/{id}

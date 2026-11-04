@@ -96,6 +96,12 @@ run(
   root,
 );
 
+// 2.5 CLI：和前端无关，但一起产出，保证下载到的命令行与服务端版本一致。
+run(
+  ["cargo", "build", "--release", "--manifest-path", "apps/cli/Cargo.toml", "--bin", "zhizhi"],
+  root,
+);
+
 // 3. 收集产物。
 const outDir = join(root, "dist");
 await mkdir(outDir, { recursive: true });
@@ -117,6 +123,21 @@ if (!exe) {
     cmd: ["strip", stripFlag, destination],
     stdio: ["inherit", "inherit", "ignore"],
   });
+}
+
+// CLI 只在原生平台产出：交叉编译 CLI 需要各自的链接器，交给 CI 的矩阵任务。
+const cliExe = host === "win" ? ".exe" : "";
+const cliBuilt = join(root, "target", "release", `zhizhi${cliExe}`);
+if (existsSync(cliBuilt)) {
+  const cliDest = join(outDir, `zhizhi-${host}${cliExe}`);
+  await copyFile(cliBuilt, cliDest);
+  if (!cliExe) {
+    Bun.spawnSync({
+      cmd: ["strip", host === "mac" ? "-S" : "--strip-all", cliDest],
+      stdio: ["inherit", "inherit", "ignore"],
+    });
+  }
+  console.log(`  cli:    ${cliDest}`);
 }
 
 const sizeMb = ((await Bun.file(destination).size) / 1024 / 1024).toFixed(1);
