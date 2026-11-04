@@ -77,11 +77,28 @@ async fn connect(database_url: &str) -> anyhow::Result<sqlx::SqlitePool> {
     Ok(db)
 }
 
-/// 从当前目录向上查找 `.env`。找不到时静默使用默认值，便于直接运行发布产物。
+/// 从当前目录逐级向上查找 `.env`，找不到时静默使用默认值，便于直接运行发布产物。
+///
+/// 找到后把工作目录切到 `.env` 所在目录再加载：`DATABASE_URL`、`ATTACHMENT_DIR`、`RELEASE_DIR`
+/// 都是相对路径，双击 exe（cwd 是 exe 所在目录）或从别处启动时，只有这样才能解析到同一份数据。
 fn load_dotenv() {
-    for candidate in [".env", "../.env", "../../.env", "../../../.env"] {
-        if dotenvy::from_filename(candidate).is_ok() {
+    let Ok(mut dir) = std::env::current_dir() else {
+        tracing::warn!("无法读取当前目录，跳过 .env 加载");
+        return;
+    };
+    loop {
+        if dir.join(".env").is_file() {
+            if std::env::set_current_dir(&dir).is_err() {
+                tracing::warn!(dir = %dir.display(), "无法切换到 .env 所在目录，相对路径将按当前目录解析");
+            }
+            if let Err(err) = dotenvy::dotenv() {
+                tracing::warn!(%err, "读取 .env 失败，改用默认配置");
+            }
             return;
+        }
+        match dir.parent() {
+            Some(parent) => dir = parent.to_path_buf(),
+            None => return,
         }
     }
 }

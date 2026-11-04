@@ -12,6 +12,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { $ } from "bun";
+import { zipSync } from "fflate";
 
 const root = join(import.meta.dir, "..");
 const args = process.argv.slice(2);
@@ -65,7 +66,10 @@ try {
   await mkdir(outDir, { recursive: true });
   const dest = join(outDir, pkg);
   if (windows) {
-    await $`zip -qj ${dest} ${staged}`;
+    // 不依赖系统 zip：Windows 没有自带的 zip.exe，Bun 的 shell 也找不到它。
+    // fflate 是纯 JS 实现，任何平台装好依赖就能用，产物仍是标准 zip（Expand-Archive 可解）。
+    const entries = { [`zhizhi${exe}`]: new Uint8Array(await readFile(staged)) };
+    await writeFile(dest, zipSync(entries, { level: 9 }));
   } else {
     // macOS 自带 bsdtar，`-C` 里只放一个文件，包内路径就是 zhizhi。
     await $`tar -czf ${dest} -C ${tmp} ${basename(staged)}`;
