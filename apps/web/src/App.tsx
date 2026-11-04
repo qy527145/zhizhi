@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
 import { Toaster } from "@/components/Toaster";
 import { AuthPage } from "@/pages/AuthPage";
 import { ConnectPage } from "@/pages/ConnectPage";
+import { DashboardPage } from "@/pages/DashboardPage";
 import { IssuePage } from "@/pages/IssuePage";
 import { MyIssuesPage } from "@/pages/MyIssuesPage";
 import { NewWorkspacePage } from "@/pages/NewWorkspacePage";
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="/new" element={<NewWorkspacePage />} />
           <Route path="/:slug" element={<WorkspaceLayout />}>
             <Route index element={<MyIssuesPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="connect" element={<ConnectPage />} />
             <Route path="projects/:projectId" element={<ProjectIssuesPage />} />
