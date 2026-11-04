@@ -17,6 +17,7 @@ export interface Info {
   name: string;
   version: string;
   addr: string;
+  public_base_url: string;
 }
 
 /** 所有错误响应的形状，对应 `apps/server/src/error.rs`。 */

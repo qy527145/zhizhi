@@ -13,6 +13,7 @@ import {
   Plus,
   Settings,
   Table2,
+  Terminal,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -127,6 +128,15 @@ export function CommandPalette() {
         hint: p.identifier,
         onSelect: run(() => navigate(`/${slug}/projects/${p.id}`)),
       })),
+      {
+        id: "go-connect",
+        group: "跳转",
+        label: "接入 CLI 与 Agent",
+        keywords: "cli skill agent jieru",
+        icon: <Terminal size={14} />,
+        hint: "G C",
+        onSelect: run(() => navigate(`/${slug}/connect`)),
+      },
       {
         id: "go-settings",
         group: "跳转",

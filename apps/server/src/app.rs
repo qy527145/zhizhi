@@ -13,6 +13,14 @@ use crate::state::AppState;
 pub fn router(state: AppState) -> Router {
     Router::new()
         .nest("/api", api::router())
+        // 安装链路不在 /api 下：用户还没登录，安装命令要能直接 curl。
+        .route("/install.sh", axum::routing::get(api::install::install_sh))
+        .route(
+            "/install.ps1",
+            axum::routing::get(api::install::install_ps1),
+        )
+        .route("/download", axum::routing::get(api::install::download_page))
+        .route("/dl/{name}", axum::routing::get(api::install::artifact))
         .fallback(serve_static)
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())

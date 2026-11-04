@@ -4,6 +4,7 @@ import type {
   Attachment,
   Comment,
   CreatedToken,
+  Info,
   Issue,
   IssuePatch,
   IssueState,
@@ -110,6 +111,7 @@ export const api = {
     post<AuthResp>("/auth/register", b),
   login: (b: { email: string; password: string }) => post<AuthResp>("/auth/login", b),
   me: () => get<User>("/auth/me"),
+  info: () => get<Info>("/info"),
 
   workspaces: () => get<Workspace[]>("/workspaces"),
   createWorkspace: (b: { name: string; slug: string }) => post<Workspace>("/workspaces", b),

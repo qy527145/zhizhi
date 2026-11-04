@@ -232,43 +232,68 @@ export function Empty({
   );
 }
 
-/** 分段控件：视图切换等互斥选项。选中块的位移只动 transform。 */
+/**
+ * 分段控件：互斥选项。选中块的位移只动 transform。
+ * 只有一个图标时用 `shape="icon"`（默认，等宽方格）；带文字时用 `shape="text"`，宽度随内容。
+ */
 export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  shape = "icon",
 }: {
   value: T;
-  options: { value: T; icon: ReactNode; label: string }[];
+  options: { value: T; icon?: ReactNode; label: string }[];
   onChange: (v: T) => void;
+  shape?: "icon" | "text";
 }) {
   const idx = Math.max(
     0,
     options.findIndex((o) => o.value === value),
   );
+  const text = shape === "text";
   return (
-    <div className="relative flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
-      <span
-        aria-hidden="true"
-        className="absolute top-0.5 bottom-0.5 left-0.5 w-7 rounded-md bg-white shadow-card transition-transform duration-200 ease-[var(--ease-out)]"
-        style={{ transform: `translateX(${idx * 28}px)` }}
-      />
-      {options.map((o) => (
-        <button
-          type="button"
-          aria-pressed={o.value === value}
-          key={o.value}
-          title={o.label}
-          aria-label={o.label}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "relative z-10 flex h-6 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors",
-            o.value === value && "text-zinc-900",
-          )}
-        >
-          {o.icon}
-        </button>
-      ))}
+    <div
+      className={cn(
+        "relative flex w-fit rounded-lg border border-zinc-200 bg-zinc-50 p-0.5",
+        text && "gap-0.5",
+      )}
+    >
+      {/* 图标模式选项等宽，高亮块可以用位移滑动；文字模式标签长短不一，改由选中项自己画背景。 */}
+      {!text && (
+        <span
+          aria-hidden="true"
+          className="absolute top-0.5 bottom-0.5 left-0.5 w-7 rounded-md bg-white shadow-card transition-transform duration-200 ease-[var(--ease-out)]"
+          style={{ transform: `translateX(${idx * 28}px)` }}
+        />
+      )}
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            type="button"
+            aria-pressed={active}
+            key={o.value}
+            title={o.label}
+            aria-label={o.label}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "relative z-10 flex items-center justify-center rounded-md text-zinc-500 transition-colors",
+              text ? "h-7 flex-1 gap-1.5 px-3 text-[13px] whitespace-nowrap" : "h-6 w-7",
+              active && (text ? "font-medium text-zinc-900" : "text-zinc-900"),
+            )}
+          >
+            {text && active && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 -z-10 animate-fade rounded-md bg-white shadow-card"
+              />
+            )}
+            {o.icon}
+            {text && o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

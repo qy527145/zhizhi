@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>下载知之 CLI</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; max-width: 720px;
+         margin: 56px auto; padding: 0 20px; color: #18181b; line-height: 1.6; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin-top: 32px; }
+  p, td, th { font-size: 13.5px; }
+  pre { background: #f4f4f5; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  code { font-family: "SF Mono", Menlo, monospace; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  td, th { padding: 6px 10px 6px 0; text-align: left; border-bottom: 1px solid #f0f0f1; }
+  .note { color: #71717a; font-size: 12.5px; }
+  a { color: #3f5bd9; }
+</style>
+</head>
+<body>
+<h1>知之 CLI</h1>
+<p class="note">在终端和 Claude Code 里管理任务。安装后运行 <code>zhizhi skill install</code> 让 Agent 学会使用。</p>
+
+<h2>macOS / Linux</h2>
+<pre>curl -fsSL __ZHIZHI_BASE_URL__/install.sh | sh</pre>
+<p class="note">装到 <code>~/.local/bin/zhizhi</code>，可用 <code>ZHIZHI_BIN_DIR</code> 改目录。</p>
+
+<h2>Windows（PowerShell）</h2>
+<pre>irm __ZHIZHI_BASE_URL__/install.ps1 | iex</pre>
+<p class="note">装到 <code>%LOCALAPPDATA%\zhizhi\bin</code> 并加入用户 PATH。</p>
+
+<h2>接进来</h2>
+<pre>zhizhi login --url __ZHIZHI_BASE_URL__ --token &lt;令牌&gt; --workspace &lt;工作区&gt;
+zhizhi skill install</pre>
+<p class="note">令牌在 Web 的「设置 › 访问令牌」创建，或跟着「接入 CLI」向导一步步来。</p>
+
+<h2>手动下载</h2>
+<p id="ver" class="note">加载中…</p>
+<table id="list"></table>
+
+<script>
+const LABEL = {
+  'aarch64-apple-darwin': 'macOS（Apple 芯片）',
+  'x86_64-apple-darwin': 'macOS（Intel）',
+  'x86_64-unknown-linux-musl': 'Linux x86_64',
+  'aarch64-unknown-linux-musl': 'Linux arm64',
+  'x86_64-pc-windows-msvc': 'Windows x86_64',
+};
+fetch('/dl/latest.json').then((r) => r.json()).then((m) => {
+  document.getElementById('ver').textContent = '最新版本 ' + m.version;
+  const t = document.getElementById('list');
+  const head = t.insertRow();
+  for (const h of ['平台', '下载', 'sha256']) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    head.appendChild(th);
+  }
+  for (const a of m.artifacts) {
+    const tr = t.insertRow();
+    tr.insertCell().textContent = LABEL[a.target] || a.target;
+    const link = document.createElement('a');
+    link.href = a.url;
+    link.textContent = a.url.split('/').pop();
+    tr.insertCell().appendChild(link);
+    const code = document.createElement('code');
+    code.textContent = a.sha256.slice(0, 12) + '…';
+    tr.insertCell().appendChild(code);
+  }
+}).catch(() => { document.getElementById('ver').textContent = '还没有发布产物'; });
+</script>
+</body>
+</html>

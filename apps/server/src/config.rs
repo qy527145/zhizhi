@@ -14,6 +14,10 @@ pub struct Config {
     pub jwt_secret: String,
     /// 附件落盘目录；数据库只存元数据，部署时需要持久化这个目录。
     pub attachment_dir: PathBuf,
+    /// 对外地址，用于安装脚本和下载页。反代或容器端口映射时与监听地址不同。
+    pub public_base_url: String,
+    /// CLI 发布产物与 `latest.json` 所在目录，由 `bun run release` 写入。
+    pub release_dir: PathBuf,
 }
 
 impl Config {
@@ -44,6 +48,24 @@ impl Config {
             _ => PathBuf::from("./data/attachments"),
         };
 
+        let public_base_url = match env::var("PUBLIC_BASE_URL") {
+            Ok(url) if !url.is_empty() => url.trim_end_matches('/').to_owned(),
+            // 未配置时用监听地址拼一个，本机开箱可用。
+            _ => format!(
+                "http://{}:{port}",
+                if host == "0.0.0.0" {
+                    "127.0.0.1"
+                } else {
+                    &host
+                }
+            ),
+        };
+
+        let release_dir = match env::var("RELEASE_DIR") {
+            Ok(dir) if !dir.is_empty() => PathBuf::from(dir),
+            _ => PathBuf::from("./data/releases"),
+        };
+
         Ok(Self {
             host,
             port,
@@ -51,6 +73,8 @@ impl Config {
             database_url,
             jwt_secret,
             attachment_dir,
+            public_base_url,
+            release_dir,
         })
     }
 
@@ -79,6 +103,8 @@ mod tests {
             database_url: "sqlite::memory:".to_owned(),
             jwt_secret: "test".to_owned(),
             attachment_dir: std::path::PathBuf::from("./data/attachments"),
+            public_base_url: "http://127.0.0.1:8080".to_owned(),
+            release_dir: std::path::PathBuf::from("./data/releases"),
         };
         assert_eq!(config.addr(), "0.0.0.0:8080");
     }

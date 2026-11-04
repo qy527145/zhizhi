@@ -27,12 +27,14 @@ async fn health(State(state): State<AppState>) -> AppResult<Json<Health>> {
     }))
 }
 
+/// 字段名即线格式（`snake_case`），与 `packages/shared` 的类型保持一致。
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 struct Info {
     name: &'static str,
     version: &'static str,
     addr: String,
+    /// 前端拼安装命令用；反代后面和 addr 可能不同。
+    public_base_url: String,
 }
 
 /// 只暴露非敏感配置，可用于确认部署环境读到了哪份 `.env`。
@@ -41,6 +43,7 @@ async fn info(State(state): State<AppState>) -> AppResult<Json<Info>> {
         name: env!("CARGO_PKG_NAME"),
         version: env!("CARGO_PKG_VERSION"),
         addr: state.config.addr(),
+        public_base_url: state.config.public_base_url.clone(),
     }))
 }
 
@@ -89,6 +92,7 @@ mod tests {
         let (status, json) = get("/api/info").await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(json["addr"], "127.0.0.1:8080");
+        assert_eq!(json["public_base_url"], "http://127.0.0.1:8080");
     }
 
     #[tokio::test]

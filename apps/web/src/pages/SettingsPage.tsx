@@ -1,8 +1,9 @@
 import type { ApiToken, CreatedToken } from "@zhizhi/shared";
 import { cn } from "@zhizhi/ui/lib/utils";
 import { Button, Input } from "@zhizhi/ui/ui";
-import { Copy, KeyRound, Settings, Trash2, UserPlus } from "lucide-react";
+import { ArrowRight, Bot, Copy, KeyRound, Settings, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Avatar, LabelDot } from "@/components/icons";
 import { api } from "@/lib/api";
 import { LABEL_COLORS } from "@/lib/constants";
@@ -42,6 +43,19 @@ export function SettingsPage() {
       </header>
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-10 px-6 py-8">
+          <Link
+            to={`/${ws?.slug}/connect`}
+            className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 transition-colors hover:bg-accent-soft/70"
+          >
+            <Bot size={16} className="shrink-0 text-accent" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium text-accent-ink">接入 CLI 与 Agent</div>
+              <div className="text-xs text-accent-ink/70">
+                五步装好命令行和 Skill，让 Agent 也能读写这里的工作任务。
+              </div>
+            </div>
+            <ArrowRight size={14} className="shrink-0 text-accent" />
+          </Link>
           <section>
             <h2 className="text-base font-semibold">{ws?.name}</h2>
             <p className="mt-1 text-[13px] text-zinc-500">

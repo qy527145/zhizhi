@@ -43,6 +43,7 @@ export function WorkspaceLayout() {
     },
     "g i": () => navigate(`/${slug}`),
     "g s": () => navigate(`/${slug}/settings`),
+    "g c": () => navigate(`/${slug}/connect`),
     "g p": () => projects[0] && navigate(`/${slug}/projects/${projects[0].id}`),
   });
 

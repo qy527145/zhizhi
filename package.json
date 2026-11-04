@@ -22,6 +22,7 @@
     "smoke": "./scripts/smoke.sh",
     "cli": "cargo run -q -p zhizhi-cli --bin zhizhi --",
     "skill:install": "cargo run -q -p zhizhi-cli --bin zhizhi -- skill install",
+    "release": "bun run scripts/release.ts",
     "clean": "bun run scripts/clean.ts"
   },
   "devDependencies": {

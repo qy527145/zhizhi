@@ -1,5 +1,5 @@
 import { Kbd } from "@zhizhi/ui/ui";
-import { ChevronsUpDown, Inbox, Plus, Search, Settings } from "lucide-react";
+import { Bot, ChevronsUpDown, Inbox, Plus, Search, Settings } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router";
 import { cn, modKey } from "@/lib/utils";
@@ -106,6 +106,9 @@ export function Sidebar() {
         </button>
         <NavLink to={`/${slug}`} end className={navItem}>
           <Inbox size={14} /> 我的任务
+        </NavLink>
+        <NavLink to={`/${slug}/connect`} className={navItem}>
+          <Bot size={14} /> 接入 CLI
         </NavLink>
         <NavLink to={`/${slug}/settings`} className={navItem}>
           <Settings size={14} /> 设置

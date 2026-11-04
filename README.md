@@ -53,12 +53,23 @@ bun run build:linux
 
 `zhizhi` 命令行让人和 Agent 在终端里管理任务；Skill 文件编译进二进制，版本始终一致。
 
+装到机器上（也可在 Web 里打开 **接入 CLI** 页，按五步向导操作，命令会自动填好地址与令牌）：
+
+```bash
+curl -fsSL http://<服务地址>/install.sh | sh     # macOS / Linux → ~/.local/bin/zhizhi
+irm http://<服务地址>/install.ps1 | iex          # Windows PowerShell
+```
+
+安装脚本从 `/dl/latest.json` 取对应平台的产物并校验 sha256；`bun run release` 生成制品与清单，
+默认只构建当前平台，其余平台交给 CI 矩阵。手动下载见 `/download`。
+
 ```bash
 bun run cli -- --help                 # 用源码运行，例如：
 bun run cli -- login --url http://127.0.0.1:8080 --token zhz_xxx --workspace my-team
 bun run cli -- issue list --json
 bun run cli -- issue get CORE-12 --download --json
 bun run skill:install                 # 安装 Skill 到 ~/.claude/skills/zhizhi
+bun run release                       # 生成 CLI 制品与 latest.json（供 /install.sh 使用）
 ```
 
 令牌在 Web「设置 → 访问令牌」创建（`zhz_` 前缀，只在创建时显示一次）。
@@ -125,6 +136,12 @@ GET|PATCH|DELETE /issues/{id}
 GET|POST /issues/{id}/comments             GET /issues/{id}/activities
 POST   /workspaces/{slug}/files            GET /files/{id}
 GET|POST /tokens                           DELETE /tokens/{id}
+
+以下不在 /api 下（安装时还没登录）：
+
+GET    /install.sh | /install.ps1           安装脚本
+GET    /download                            下载页
+GET    /dl/{文件名}                         CLI 制品与 latest.json
 GET|POST /projects/{id}/views              PATCH|DELETE /views/{id}
 ```
 
@@ -134,15 +151,17 @@ PATCH 任务时，`assignee_id` / `due_date` 传 `null` 表示清空，不传表
 
 所有环境变量集中在根目录 `.env`，`.env.example` 是文档。
 
-| 变量             | 默认                 | 说明                                     |
-| ---------------- | -------------------- | ---------------------------------------- |
-| `HOST`           | `127.0.0.1`          | 后端监听地址，容器内改为 `0.0.0.0`       |
-| `PORT`           | `8080`               | 后端端口，也是生产 HTTP 端口             |
-| `WEB_PORT`       | `5173`               | Vite 开发服务器端口                      |
-| `RUST_LOG`       | `info`               | tracing 过滤器                           |
-| `DATABASE_URL`   | `sqlite://zhizhi.db` | SQLite 位置，相对路径基于启动目录        |
-| `JWT_SECRET`     | 开发默认值           | 生产环境必须覆盖，建议 32 字节以上随机串 |
-| `ATTACHMENT_DIR` | `./data/attachments` | 附件落盘目录，需持久化并随数据库一起备份 |
+| 变量              | 默认                  | 说明                                                                 |
+| ----------------- | --------------------- | -------------------------------------------------------------------- |
+| `HOST`            | `127.0.0.1`           | 后端监听地址，容器内改为 `0.0.0.0`                                   |
+| `PORT`            | `8080`                | 后端端口，也是生产 HTTP 端口                                         |
+| `WEB_PORT`        | `5173`                | Vite 开发服务器端口                                                  |
+| `RUST_LOG`        | `info`                | tracing 过滤器                                                       |
+| `DATABASE_URL`    | `sqlite://zhizhi.db`  | SQLite 位置，相对路径基于启动目录                                    |
+| `JWT_SECRET`      | 开发默认值            | 生产环境必须覆盖，建议 32 字节以上随机串                             |
+| `ATTACHMENT_DIR`  | `./data/attachments`  | 附件落盘目录，需持久化并随数据库一起备份                             |
+| `PUBLIC_BASE_URL` | 由 `HOST`/`PORT` 推导 | 对外地址，用于安装脚本、下载页和前端展示的安装命令；反代时填真实地址 |
+| `RELEASE_DIR`     | `./data/releases`     | CLI 制品与 `latest.json` 目录，由 `bun run release` 写入             |
 
 ## 用模板创建新项目
 

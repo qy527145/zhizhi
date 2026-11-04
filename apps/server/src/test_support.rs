@@ -27,6 +27,10 @@ pub fn config() -> Config {
         attachment_dir: std::env::temp_dir()
             .join("zhizhi-test-attachments")
             .join(crate::models::new_id()),
+        public_base_url: "http://127.0.0.1:8080".to_owned(),
+        release_dir: std::env::temp_dir()
+            .join("zhizhi-test-releases")
+            .join(crate::models::new_id()),
     }
 }
 

@@ -2,6 +2,7 @@ pub mod access;
 pub mod auth;
 pub mod files;
 pub mod health;
+pub mod install;
 pub mod issues;
 pub mod projects;
 #[cfg(test)]
